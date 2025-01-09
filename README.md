@@ -33,8 +33,7 @@ raw data can be found at **'[Python]PreProcessing/results'**
 ## Pre-processing
 - Raw data (.asc) are pre-processed by **'[Python]PreProcessing/parseData.py'**
 
-	- Pre- processed data is saved as **‘data_original_xx.json’**
-	- xx changes depending on the analysis mode (e.g., mm or z-scored)
+	- Pre- processed data is saved as **‘s[subject ID]_trial.json’**
 	
 - Artifact rejection and data epoch are performed by **'[Python]PreProcessing/dataAnalysis.py'**
 
