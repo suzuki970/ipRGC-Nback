@@ -1,0 +1,2479 @@
+---
+title: "Figures' note for N-back ipRGC study"
+author: "Yuta Suzuki, Hsin-I Liao, Shigeki Nakauchi, Shigeto Furukawa"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: 
+  word_document:
+    # toc: true
+    # reference_docx: doc_templete.docx
+  # slidy_presentation:
+  # pdf_document:
+    # css: style.css
+params:
+  year: 2024
+---
+
+# Article information
+Yuta Suzuki$^1$, Hsin-I Liao$^1$, Shigeki Nakauchi$^2$, Shigeto Furukawa$^1$$^3$
+
+
+$^1$ NTT Communication Science Laboratories, NTT Corporation, Atsugi 243-0198, Japan
+
+$^2$ Department of Computer Science and Engineering, Toyohashi University of Technology, 1-1 Hibarigaoka Tempaku, Toyohashi, Aichi 441-8580, Japan
+
+$^3$ NTT Communication Science Laboratories, NTT Corporation, Atsugi 243-0198, Japan
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, message=FALSE, echo=FALSE,warning=FALSE,include=FALSE}
+
+SIZE_FONT = 14
+numOfTertile = 3
+
+nsFlag = T
+saveFig = T
+
+#### file loading
+CairoFonts(regular = "Times New Roman", bold="Times New Roman Bold")
+
+rootFolder = paste0("../[Python]PreProcessing/data")
+
+folderName = list.files(rootFolder, full.names=T)
+folderName = folderName[length(folderName)]
+
+date = unlist(strsplit(folderName,"/"))
+date = date[length(date)]
+
+dataFolder = paste0("./data/",date,"/")
+saveFolder = paste0("./figure/",format(Sys.time(), '%Y%m%d'),"/")
+
+cfg = fromJSON(file=paste0(folderName,"/cfg.json"))
+
+TIME_START = cfg$TIME_START
+TIME_END = cfg$TIME_END
+WIN_ANALYSIS = cfg$TIME_END
+
+sTime = cfg$WID_BASELINE[[1]][1]
+eTime = cfg$TIME_END
+
+if(!dir.exists(saveFolder)){
+  dir.create(saveFolder)
+}
+
+# average -----------------------------------------------------------------
+
+runName = c("Run1","Run2","Run3","Run4","Run5","Run6")
+
+anovaTabAll = list()
+p_all = list()
+
+
+annotation_df <- data.frame(
+  Nback = c("1-back","2-back"),
+  light = c("low ipRGC","low ipRGC"),
+  start = c("low ipRGC","low ipRGC"),
+  end = c("high ipRGC","high ipRGC"),
+  y = c(99),
+  # label = c("n.s.",paste0("p=",round(ttest_2back$ttest$p.value,3)))
+  label = c("n.s.","*")
+)
+
+config <- list(lim_x = c(0,1),
+               lim_y = c(2,4),
+               alpha = 0.1,
+               stride = 0.1,
+               label_x = "Time [sec]",
+               label_y = "Pupil size[a.u.]",
+               title = "",
+               linetype = T,
+               shape=F,
+               # grCol = c("#738CD9","#222222")
+               grCol = c("#AB004A","#222222")
+)
+
+```
+
+\newpage
+# Results
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE, include=FALSE}
+
+f = list.files(folderName, pattern = "df_behavior_ave.json", full.names=T)
+df_behavior_ave = fromJSON(file=f[1])
+
+for(iName in 1:length(df_behavior_ave)){
+  df_behavior_ave[[iName]] = unlist(df_behavior_ave[[iName]])
+}
+df_behavior_ave = as.data.frame(df_behavior_ave)
+
+
+f = list.files(folderName, pattern = "df_max.json", full.names=T)
+df_max = fromJSON(file=f[1])
+
+for(iName in 1:length(df_max)){
+  df_max[[iName]] = unlist(df_max[[iName]])
+}
+df_max = as.data.frame(df_max)
+
+################################ hist ################################
+
+# g <- ggplot(df_max, aes(x = Y))+
+#   geom_histogram()
+
+
+################################ stimulus tuning ################################ 
+df_behavior_ave$sub = factor( df_behavior_ave$sub ,levels = unique(df_behavior_ave$sub))
+df_max$sub = factor( df_max$sub ,levels = unique(df_max$sub))
+
+p_all$stimulus_tuning <- ggplot(df_behavior_ave,aes(x = Color, y = ans, color=sub,group=sub))+
+  geom_point(size = 3)+
+  geom_line(size=0.5)+
+  geom_point(data=df_max,aes(x=Color, y=ans, color=sub, group=sub),size = 6)+
+  xlab("Color candidate (low ipRGC light)") + ylab("Probability of 'identical'")
+
+config$ylim = round(seq(0,1,0.2),4)
+config$ylim_stride = 0.02
+
+config$xlim = round(seq(1,12,1),4)
+config$xlim_stride = 0.1
+
+# display.brewer.all()
+
+p_all$stimulus_tuning = setEmptyStyle(p_all$stimulus_tuning,config)+
+  scale_x_continuous(breaks = config$xlim)
+
+p_all$stimulus_tuning$size = c(10,8)
+
+################################ Brightness ################################ 
+
+f = list.files(folderName, pattern = "stimSelect_same.json", full.names=T)
+df_sameLight = fromJSON(file=f[1])
+
+for(iName in 1:length(df_sameLight)){
+  df_sameLight[[iName]] = unlist(df_sameLight[[iName]])
+}
+df_sameLight = as.data.frame(df_sameLight)
+
+df_sameLight$light = "low ipRGC"
+df_sameLight = rbind(df_sameLight[1,],df_sameLight)
+df_sameLight[1,]$light="high ipRGC"
+df_sameLight[1,]$Y = 713.557
+
+df_Y = aggregate( Y ~ light, data = df_sameLight, FUN = 'mean')
+df_sd = aggregate( Y ~ light, data = df_sameLight, FUN = 'sd')
+
+
+################ same light ################ 
+
+# df$selected = df$selected + 1
+# df$selected = factor( df$selected ,levels=sort(unique(df$selected)))
+# 
+# df$light = factor( df$light ,levels=c("low ipRGC","high ipRGC"))
+
+p_all$sameLight <- ggplot(df_sameLight,aes(x = Color, y = ans))+
+  geom_boxplot()+
+  ylab("Probability of 'identical'")
+
+config$ylim = round(seq(0,1,0.2),4)
+config$ylim_stride = 0.02
+
+config$xlim = round(seq(0,1,1),4)
+config$xlim_stride = 0.1
+
+p_all$sameLight = setEmptyStyle(p_all$sameLight,config)+
+  scale_x_continuous(breaks = config$xlim)
+
+p_all$sameLight$size = c(8,8)
+# p <- ggplot(df,aes(x = x, y = y,color = size, group = Light)
+#  eval(parse(text=paste0("p = p + geom_point(size = 3)")))
+
+################ Brightness ################ 
+
+f = list.files(folderName, pattern = "spectra.json", full.names=T)
+df_light = fromJSON(file=f[1])
+
+for(iName in 1:length(df_light)){
+  df_light[[iName]] = unlist(df_light[[iName]])
+}
+df_light = as.data.frame(df_light)
+
+df_light_show = df_light
+
+df_light_show$index = NULL
+df_light_show$wavelength.nm. = NULL
+df_light_show$power = NULL
+df_light_show$X = NULL
+df_light_show$Z = NULL
+df_light_show$L. = NULL
+df_light_show$a. = NULL
+df_light_show$b. = NULL
+df_light_show$size = NULL
+
+b = df_light[df_light$Light != "high ipRGC",]$ipRGC
+a = df_light[df_light$Light == "high ipRGC",]$ipRGC
+
+contrast_ipRGC =  (a-b)/(a+b)*100
+
+x1 = df_light[(df_light$Light=="high ipRGC"),]$Y
+x2 = df_max$Y
+
+x1 = rep(x1,length(x2))
+
+ttest_luminance = getTtestSummary(x1,x2)
+# , size = size
+df_light[df_light["Light"]=="high ipRGC",]$size = max(df_light$size)
+
+# p_all$xy <- ggplot(df_light,aes(x = x, y = y, color = size))+
+p_all$xy <- ggplot(df_light,aes(x = x, y = y, size = size,color=Light))+
+  scale_size(range = c(5, 15))+
+  # geom_point(size=10)+
+  geom_point()+
+  # coord_fixed(ratio = 1)+ 
+  scale_color_manual(values = c(config$grCol[1],rep(config$grCol[2],12)))
+# scale_color_gradient(low=brewer.pal(6, "YlOrRd")[2],high=brewer.pal(6, "YlOrRd")[6])
+# scale_color_gradient(low=brewer.pal(8, "Greys")[2],high=brewer.pal(8, "Greys")[8])
+
+p_all$xy = p_all$xy +
+  geom_point(x=df_light[df_light$Light=="high ipRGC",]$x,
+             y=df_light[df_light$Light=="high ipRGC",]$y,
+             size=10,color="black")
+
+config$ylim = round(seq(0.228,0.252,0.004),4)
+config$ylim_stride = 0.01
+
+config$xlim = round(seq(0.4,0.428,0.004),4)
+config$xlim_stride = 0.01
+
+# display.brewer.all()
+
+p_all$xy = setEmptyStyle(p_all$xy,config)+
+  scale_x_continuous(breaks = config$xlim)+
+  theme(
+    axis.text.x = element_text(angle = 30, hjust = 1)
+  )+
+  coord_equal()
+
+# theme(
+# legend.justification=c(0,1), legend.position=c(0,1),
+# legend.justification=c(0,1), legend.position=c(1,1),
+# legend.position="right",
+# legend.title=element_blank(),
+# legend.position="none",
+# axis.text.x = element_text(angle = 30, hjust = 1)
+# )
+
+p_all$xy$size = c(12,12)
+
+
+################ ipRGC ################ 
+
+# c("#FED976","#F7C069","#EFA75D","#DD7446","#BD0026")
+
+# p = c("#AB004A","#BD0026","#FED976","#F7C069","#EFA75D","#FED976","#F7C069",
+#       "#FED976","#FED976","#F7C069","#EFA75D","#DD7446","#FED976")
+
+p = c("#AB004A","#F0F0F0","#000000","#525252","#737373","#000000","#525252",
+      "#000000","#000000","#525252","#737373","#BDBDBD","#000000")
+
+# brewer.pal(10, "Greys")
+
+df_light$linetype = "high ipRGC"
+df_light[df_light$Light!="high ipRGC",]$linetype = "low ipRGC"
+
+df_light$linetype = factor( df_light$linetype ,levels=c("low ipRGC","high ipRGC"))
+
+config$linetype=T
+p_all$ipRGC = dispLineGraph(df_light,config,"ipRGC",c("linetype"),12)+
+  xlab("") + ylab("ipRGC contrast")
+
+# p_all$ipRGC <- ggplot(df_light,aes(x = linetype, y = ipRGC, color=Light))+
+#   geom_point(size=5)+
+#   xlab("") + ylab("ipRGC contrast")+
+#   scale_color_manual(values = p)
+
+config$ylim = round(seq(0.6,1.2,0.1),4)
+config$ylim_stride = 0.01
+
+config$xlim = round(seq(1,2,1),4)
+config$xlim_stride = 0.1
+
+p_all$ipRGC = setEmptyStyle(p_all$ipRGC,config)
+# scale_x_continuous(breaks = config$xlim)
+
+p_all$ipRGC$size = c(6,5)
+
+########################################################################3
+f = list.files(folderName, pattern = "spectra_all.json", full.names=T)
+df_light = fromJSON(file=f[1])
+
+for(iName in 1:length(df_light)){
+  df_light[[iName]] = unlist(df_light[[iName]])
+}
+df_light = as.data.frame(df_light)
+
+df_light$linetype = "0.target"
+df_light[df_light$Light!="high ipRGC",]$linetype = "1.reference"
+config$label_y = expression(paste("Radiance [W*sr"^{"-1"},"*m"^{"-2"} ,"]" ))
+config$label_x = expression("Wavelength[nm]")
+
+p_all$spectra <- ggplot(df_light,aes(x = wavelength.nm., y = power, color = Light,linetype=linetype))+
+  xlab(config$label_x) + ylab(config$label_y) +
+  #   # scale_size(range = c(5, 25))+
+  geom_line()
+
+config$ylim = round(seq(0,0.04,0.01),4)
+config$ylim_stride = 0.001
+
+config$xlim = round(seq(380,780,40),4)
+config$xlim_stride = 2
+
+# display.brewer.all()
+
+p_all$spectra = setEmptyStyle(p_all$spectra,config)+
+  scale_x_continuous(breaks = config$xlim)+
+  theme(
+    # legend.justification=c(1,1), legend.position=c(1,0),
+    axis.text.x = element_text(angle = 30, hjust = 1)
+  )
+
+p_all$spectra$size = c(9,3)
+
+a=df_light[(df_light$wavelength.nm.==380)&
+            (df_light$linetype=="1.reference"),]
+
+mean(a$Y)
+sd(a$Y)
+
+########################################################################
+
+p = c("#325C9B","#83AE27","#D95635","#81C5D8","#83AE27","#D95635")
+
+f = list.files(folderName, pattern = "spectra_projector", full.names=T)
+df_light = fromJSON(file=f[1])
+
+for(iName in 1:length(df_light)){
+  df_light[[iName]] = unlist(df_light[[iName]])
+}
+df_light = as.data.frame(df_light)
+
+df_light$primary = "ipRGC"
+df_light[grepl("blue", df_light$Light),]$primary = "S-cone"
+
+# df_light$linetype = "0.target"
+# df_light[df_light$Light!="high ipRGC",]$linetype = "1.reference"
+# config$label_y = expression(paste("Radiance [W*sr"^{"-1"},"*m"^{"-2"} ,"]" ))
+# config$label_x = expression("Wavelength[nm]")
+
+p_all$spectra_projector <- ggplot(df_light,aes(x = wavelength.nm., y = power, color = Light))+
+  xlab(config$label_x) + ylab(config$label_y) +
+  scale_color_manual(values = p)+
+  geom_line()+
+  facet_grid(primary ~ . )
+
+config$ylim = round(seq(0,0.1,0.02),4)
+config$ylim_stride = 0.001
+
+config$xlim = round(seq(380,780,40),4)
+config$xlim_stride = 2
+
+# display.brewer.all()
+
+p_all$spectra_projector = setEmptyStyle(p_all$spectra_projector,config)+
+  scale_x_continuous(breaks = config$xlim)+
+  theme(
+    axis.text.x = element_text(angle = 30, hjust = 1)
+  )
+
+p_all$spectra_projector$size = c(10,6)
+
+
+
+# df_light$primary = "ipRGC"
+# df_light[grepl("blue", df_light$Light),]$primary = "S-cone"
+
+```
+
+
+### Stimulus tuning experiment
+In order to tune a metameric stimulus which has a higher ipRGC contrast but independent from the cones activities taking into account individual differences in cone distribution (reference), we first identified a metermaric light with high ipRGC light by 2AFC experiment.  Figure 2D shows the CIE xy of the candidate low ipRGC light and number of participants in each light that was judged to be regarded as a metameric to the high ipRGC light. In all subjects, the selected light was reported as being perceived as the same color at least once (Supplementary Figure 1). The averaged luminance of selected low ipRGC calculated based upon CIE photoreceptor sensitivities was `r round(mean(df_max$Y),3)` $\pm$ `r round(sd(df_max$Y),3)` cd/m2. The averaged Michelson contrast of ipRGC across used metamar pair was `r round(mean(contrast_ipRGC),3)` $\pm$ `r round(sd(contrast_ipRGC),3)`%. 
+
+CIE xy (`r round(df_light_show[df_light_show$Light=="high ipRGC",]$x,3)`,
+`r round(df_light_show[df_light_show$Light=="high ipRGC",]$y,3)`)
+
+
+<!-- To identify a metermaric light with high ipRGC light, participants were asked if the two presented light are identical or different by 2AFC.  -->
+<!-- Figure S1 shows the averaged judgement in each light. the black circle shows the selected light.  -->
+<!-- When the probability of two or more light are the same, the most close measured CIE xy light are employed.  -->
+<!-- Figure 2D shows CIE xy coordinate of the chosen low ipRGC light that was judged to be metameric to the high ipRGC light. There is no luminance differences between high and low ipRGC light (`r showTtestSummary(ttest_luminance)`).  -->
+
+<!-- `r round(mean(df_sameLight$ans),3)` $\pm$ `r round(sd(df_sameLight$ans),3)` -->
+
+<!-- `r kable(df_light_show)` -->
+
+
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE, include=FALSE}
+
+
+f = list.files(folderName, pattern = "spectra_flux", full.names=T)
+df_light = fromJSON(file=f[1])
+
+for(iName in 1:length(df_light)){
+  df_light[[iName]] = unlist(df_light[[iName]])
+}
+df_light = as.data.frame(df_light)
+
+df_ave = aggregate( Y ~ sub, data = df_light, FUN = 'mean')
+df_ave$ipRGC_Y = df_Y[df_Y$light=="high ipRGC",]$Y
+
+df_ave$ratio = df_Y[df_Y$light=="high ipRGC",]$Y
+
+p_all$brightness <- ggplot(df_ave,aes(x = 0, y = Y/ipRGC_Y*100)) +
+  xlab("") + ylab("Brightness ratio [%]") +
+  #   # scale_size(range = c(5, 25))+
+  geom_boxplot()
+
+config$ylim = round(seq(80,160,20),4)
+config$ylim_stride = 2
+
+config$xlim = round(seq(0,1,1),4)
+config$xlim_stride = 0.1
+
+p_all$brightness = setEmptyStyle(p_all$brightness,config)+
+  scale_x_continuous(breaks = config$xlim)+
+  theme(
+    axis.text.x = element_text(angle = 30, hjust = 1)
+  )
+
+p_all$brightness$size = c(6,5)
+
+x1 = df_ave$Y
+x2 = df_Y[df_Y$light == "high ipRGC",]$Y
+x2=rep(x2,length(x1))
+
+ttest_brightness = getTtestSummary(x1,x2)
+
+```
+
+### Brightness
+
+By using the metermaric light in each participants, we confirmed the activation of ipRGC by the brightness judgement experiment. Figure 1E shows the ratio of adjusted luminance to high ipRGC light. The high ipRGC light was perceived around 20% more brighter than the low ipRGC light (`r showTtestSummary(ttest_brightness)`), consistent with previous studies (Brown et al., 2012, Yamakawa et al.,2019).
+
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE, include=FALSE}
+
+# f = list.files(folderName, pattern = "data_timeCourse.json", full.names=T)
+# df_pupil = fromJSON(file=f[1])
+# 
+# for(iName in 1:length(df_pupil)){
+#   df_pupil[[iName]] = unlist(df_pupil[[iName]])
+# }
+# df_pupil = as.data.frame(df_pupil)
+# 
+# df_pupil = aggregate( Pupil.mm. ~ sub*Time.s.*light*Nback, data = df_pupil, FUN = 'mean')
+
+
+# config <- list(lim_x = c(min(df_pupil$Time.s.),max(df_pupil$Time.s.)),
+#                lim_y = c(2,4),
+#                alpha = 0.1,
+#                stride = 0.1,
+#                label_x = "Time [sec]",
+#                label_y = "Pupil size[a.u.]",
+#                title = "",
+#                linetype = T,
+#                grCol = c("#738CD9","#222222")
+# )
+
+# df_pupil$Run = runName[df_pupil$Run]
+
+# df_pupil$data_x = df_pupil$Time.s.
+# p_all$pupilTimeCourse <- disp(df_pupil,config,"Pupil.mm.",1,c("light","Nback")) +
+#   # facet_grid(sub ~ .)+
+#   theme(
+#     # legend.justification=c(0,1), legend.position=c(0,1),
+#     legend.justification=c(0,1), legend.position=c(1,1)
+#   )
+# 
+# config$ylim = round(seq(2.5,3.5,0.1),4)
+# config$ylim_stride = 0.01
+# config$xlim = round(seq(min(df_pupil$Time.s.),max(df_pupil$Time.s.),25),2)
+# config$xlim_stride = 2.5
+# 
+# config$label_x = ""
+# p_all$pupilTimeCourse = setEmptyStyle(p_all$pupilTimeCourse,config)+
+#   scale_x_continuous(breaks = config$xlim)
+# 
+# p_all$pupilTimeCourse$size = c(6,10)
+
+
+# # average -----------------------------------------------------------------
+
+config$grCol = c("#222222","#AB004A",rep("#101010",52))
+
+f = list.files(folderName, pattern = "data_timeCourse_ave.json", full.names=T)
+df_pupil = fromJSON(file=f[1])
+
+for(iName in 1:length(df_pupil)){
+  df_pupil[[iName]] = unlist(df_pupil[[iName]])
+}
+df_pupil = as.data.frame(df_pupil)
+
+
+df = aggregate( Pupil.mm. ~ sub*light*Nback, data = df_pupil, FUN = 'mean')
+
+anovakun(df,"sAB",long=T, peta=T)
+
+
+df$light = factor(df$light ,levels = unique(df$light))
+df$sub = factor(df$sub,levels = unique(df$sub))
+df$Nback = factor(df$Nback,levels = unique(df$Nback))
+
+bf_table = anovaBF(Pupil.mm. ~ light*Nback + sub, data=df, whichRandom = "sub",progress=FALSE)
+
+x1 = df[(df$Nback=="1-back")&(df$light=="high ipRGC"),]$Pupil.mm.
+x2 = df[(df$Nback=="1-back")&(df$light=="low ipRGC"),]$Pupil.mm.
+
+ttest_1back = getTtestSummary(x1,x2)
+
+x1 = df[(df$Nback=="2-back")&(df$light=="high ipRGC"),]$Pupil.mm.
+x2 = df[(df$Nback=="2-back")&(df$light=="low ipRGC"),]$Pupil.mm.
+
+ttest_2back = getTtestSummary(x1,x2)
+
+annotation_df$label = c(ttest_1back$sig,ttest_2back$sig)
+annotation_df$y = 3.1
+
+df$light = factor( df$light ,levels=c("low ipRGC","high ipRGC"))
+
+config$linetype=T
+config$label_x=""
+config$label_y="Pupil size [mm]"
+
+p_all$pupil_ave = dispLineGraph(df,config,"Pupil.mm.",c("light","light","Nback"))+
+  facet_grid(. ~ Nback)+
+  geom_signif(data=annotation_df,
+              aes( xmin=start,xmax=end,annotations=label,y_position=y),
+              textsize = 5, size=0.2, tip_length = 0.00,color="black",family=fontFamily,manual = TRUE)
+# +
+#   geom_line(data=df,
+#             size = 0.1,
+#             alpha = 0.2,
+#             aes(x = light, y = Pupil.mm., group = interaction(sub,Nback), color = interaction(sub,Nback)))+
+#   geom_point(data=df,
+#             size = 0.1,
+#             alpha = 0.1,
+#             aes(x = light, y = Pupil.mm., 
+#                 group = interaction(sub,light,Nback), color = interaction(sub,Nback)))
+
+config$ylim = round(seq(2.6,3.2,0.1),4)
+config$ylim_stride = 0.01
+config$xlim = round(seq(1,2,1),4)
+config$xlim_stride = 0.5
+
+p_all$pupil_ave = setEmptyStyle(p_all$pupil_ave,config)+
+  theme(
+    # legend.justification=c(0,1), legend.position=c(0,1),
+    # legend.justification=c(0,1), legend.position=c(1,1),
+    # legend.position="right",
+    # legend.title=element_blank(),
+    legend.position="none",
+    axis.text.x = element_text(angle = 30, hjust = 1)
+  )
+
+p_all$pupil_ave$size = c(6,6)
+
+```
+
+
+### Tonic pupil response
+
+Pupil size was measured using an infrared camera while participants were lighted low and high ipRGC light and engaged in 1- or 2-back task (see Method). Figure 2B illustrates the averaged pupil size during 1- and 2-back task in each lighting condition. A two-way repeated measures ANOVA for the main effect of light showed that the pupil size for high ipRGC light was significantly smaller than for low ipRGC light (`r showAnovaSummary(forDrawingSigANOVA,bf_table,2,1)`), consistent with the previous studies as an effect of activation of ipRGC. Following post analysis also showed that the pupil size in both N-back task for high ipRGC light was smaller than for low ipRGC light (`r showTtestSummary(ttest_1back)`, `r showTtestSummary(ttest_2back)`). In addition, the pupil size of 2-back task was larger than of 1-back task as reported an effect of cognitive load differences previously (`r showAnovaSummary(forDrawingSigANOVA,bf_table,4,2)`), as reported here and elsewhere. 
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE, include=FALSE}
+
+f = list.files(folderName, pattern = "df_target_mean.json", full.names=T)
+df = fromJSON(file=f[1])
+
+for(iName in 1:length(df)){
+  df[[iName]] = unlist(df[[iName]])
+}
+df = as.data.frame(df)
+
+data_anova = aggregate( hit ~ sub*light*Nback, data = df, FUN = 'mean')
+anovakun(data_anova,"sAB",long=T, peta=T)
+
+hit_anova = forDrawingSigANOVA
+
+modelList = c(
+  "hit ~ light + (1| sub)"
+)
+
+#### LME #########################
+estimateAll = NULL
+for(inback in unique(df$Nback)){
+  tmp_df = df[(df$Nback==inback),]
+
+  aic_res = NULL
+  for( m in modelList){
+    # eval(parse(text=paste0(" model_cand <- lmer(",m,", data=tmp_df)")))
+    eval(parse(text=paste0(" model_cand <- lmer(",m,", data=tmp_df)")))
+    sm = summary(model_cand)
+    print(sm)
+  }
+}
+################################
+
+df$light = factor(df$light ,levels = unique(df$light))
+df$sub = factor(df$sub,levels = unique(df$sub))
+df$Nback = factor(df$Nback,levels = unique(df$Nback))
+
+bf_table = anovaBF(hit ~ light*Nback + sub, data=df, whichRandom = "sub",progress=FALSE)
+
+x1 = df[(df$Nback=="1-back")&(df$light=="high ipRGC"),]$hit
+x2 = df[(df$Nback=="1-back")&(df$light=="low ipRGC"),]$hit
+
+ttest_1back = getTtestSummary(x1,x2)
+
+x1 = df[(df$Nback=="2-back")&(df$light=="high ipRGC"),]$hit
+x2 = df[(df$Nback=="2-back")&(df$light=="low ipRGC"),]$hit
+
+ttest_2back = getTtestSummary(x1,x2)
+
+annotation_df$label = c(ttest_1back$sig,ttest_2back$sig)
+annotation_df$y = 98
+
+config <- list(lim_x = c(-0.5,TIME_END),
+               lim_y = c(5000,8000),
+               alpha = 0.1,
+               stride = 0.1,
+               label_x = "",
+               label_y = "Accuracy (% of hit)",
+               title = "",
+               linetype = T,
+               grCol = c("#222222","#AB004A",rep("#101010",54)),
+               shape=F
+)
+
+df$light = factor( df$light ,levels=c("low ipRGC","high ipRGC"))
+df$hit = df$hit * 100
+
+p_all$hit = dispLineGraph(df,config,"hit",c("light","light","Nback"))+
+  facet_grid(. ~ Nback ) +
+  geom_signif(data=annotation_df,
+              aes( xmin=start,xmax=end,annotations=label,y_position=y),
+              textsize = 5, size=0.2, tip_length = 0.00,family=fontFamily,manual = TRUE)
+
+# +
+# geom_line(data=df,
+#           size = 0.1,
+#           alpha = 0.2,
+#           aes(x = light, y = hit, group = interaction(sub,Nback), color = interaction(sub,Nback))) +
+# geom_point(data=df,
+#           size = 0.1,
+#           alpha = 0.1,
+#           aes(x = light, y = hit, group = interaction(sub,light,Nback), color = interaction(sub,Nback))) 
+
+
+# config$ylim = round(seq(0.85,1,0.025),4)
+# config$ylim_stride = 0.002
+# config$ylim = round(seq(85,100,2.5),4)
+config$ylim = round(seq(80,100,2.5),4)
+config$ylim_stride = 0.25
+config$xlim = round(seq(1,2,1),4)
+config$xlim_stride = 0.5
+
+p_all$hit = setEmptyStyle(p_all$hit,config)+
+  theme(
+    # legend.justification=c(0,1), legend.position=c(1,1),
+    # legend.position="right",
+    legend.position="none",
+    # legend.justification=c(0,1), legend.position=c(0,1),
+    axis.text.x = element_text(angle = 30, hjust = 1),
+    # legend.title=element_blank()
+  )
+
+p_all$hit$size = c(6,6)
+
+f = list.files(folderName, pattern = "df_nonTarget.json", full.names=T)
+df_nonTarget = fromJSON(file=f[1])
+
+for(iName in 1:length(df_nonTarget)){
+  df_nonTarget[[iName]] = unlist(df_nonTarget[[iName]])
+}
+df_nonTarget = as.data.frame(df_nonTarget)
+
+df_nonTarget$light = factor( df_nonTarget$light ,levels=c("low ipRGC","high ipRGC"))
+
+for( SDT in c("CR","FA")){
+
+  eval(parse(text=paste0("data_anova = aggregate( ", SDT," ~ sub*light*Nback, data = df_nonTarget, FUN = 'mean')")))
+
+  # anovakun(data_anova,"sAB",long=T, peta=T)
+
+  # eval(parse(text=paste0("df_nonTarget$", SDT,"=df_nonTarget$",SDT,"*100")))
+  eval(parse(text=paste0("config$label_y = '", SDT," rate(%)'")))
+
+  eval(parse(text=paste0("p_all$", SDT,"= dispLineGraph(df_nonTarget,config,'", SDT, "',c('light','light','Nback'))")))
+  eval(parse(text=paste0("p_all$", SDT,"= p_all$", SDT,"+facet_grid(. ~ Nback )")))
+}
+
+x1 = df_nonTarget[(df_nonTarget$Nback=="2-back")&(df_nonTarget$light=="high ipRGC"),]$FA
+x2 = df_nonTarget[(df_nonTarget$Nback=="2-back")&(df_nonTarget$light=="low ipRGC"),]$FA
+
+ttestFA_2back = getTtestSummary(x1,x2)
+
+
+for(nback in c("1-back","2-back")){ 
+  tmp_low_target = df[(df$Nback==nback)&(df$light=="low ipRGC"),]
+  tmp_high_target = df[(df$Nback==nback)&(df$light=="high ipRGC"),]
+  
+  tmp_low = df_nonTarget[(df_nonTarget$Nback==nback)&(df$light=="low ipRGC"),]
+  tmp_high = df_nonTarget[(df_nonTarget$Nback==nback)&(df$light=="high ipRGC"),]
+  
+  tmp_sig = NULL
+  for( SDT in c("hit","miss","CR","FA")){
+    
+    if ((SDT == "hit") | (SDT == "miss")){
+      eval(parse(text=paste0("x1 = df[(df$Nback=='",nback,"')&(df$light=='high ipRGC'),]$", SDT)))
+      eval(parse(text=paste0("x2 = df[(df$Nback=='",nback,"')&(df$light=='low ipRGC'),]$", SDT)))
+    }else{
+      eval(parse(text=paste0("x1 = df_nonTarget[(df_nonTarget$Nback=='",nback,"')&(df_nonTarget$light=='high ipRGC'),]$", SDT)))
+      eval(parse(text=paste0("x2 = df_nonTarget[(df_nonTarget$Nback=='",nback,"')&(df_nonTarget$light=='low ipRGC'),]$", SDT)))
+    }
+    tmp_ttest = getTtestSummary(x1,x2)
+    tmp_sig = c(tmp_sig,tmp_ttest$sig)
+  }
+
+
+  df_SDT <- data.frame(
+    sdt = c(paste0("hit(",tmp_sig[1],")"),
+            paste0("miss(",tmp_sig[2],")"),
+            paste0("FA(",tmp_sig[3],")"),
+            paste0("CR(",tmp_sig[4],")")),
+    low_ipRGC = c(paste0(round(mean(tmp_low_target$hit),3)," ± ",round(sd(tmp_low_target$hit),3)),
+                  paste0(round(mean(tmp_low_target$miss),3)," ± ",round(sd(tmp_low_target$miss),3)),
+                  paste0(round(mean(tmp_low$FA)*100,3)," ± ",round(sd(tmp_low$FA)*100,3)),
+                  paste0(round(mean(tmp_low$CR)*100,3)," ± ",round(sd(tmp_low$CR)*100,3))),
+    high_ipRGC = c(paste0(round(mean(tmp_high_target$hit),3)," ± ",round(sd(tmp_high_target$hit),3)),
+                   paste0(round(mean(tmp_high_target$miss),3)," ± ",round(sd(tmp_high_target$miss),3)),
+                   paste0(round(mean(tmp_high$FA)*100,3)," ± ",round(sd(tmp_high$FA)*100,3)),
+                   paste0(round(mean(tmp_high$CR)*100,3)," ± ",round(sd(tmp_high$CR)*100,3)))
+  )
+  
+  if (nback == "1-back"){
+    df_SDT_1back = df_SDT
+  }else{
+    df_SDT_2back = df_SDT
+  }
+  
+}
+
+config$grCol = c("#222222","#AB004A",rep("#101010",52))
+
+f = list.files(folderName, pattern = "data_timeCourse_ave.json", full.names=T)
+df_pupil = fromJSON(file=f[1])
+
+for(iName in 1:length(df_pupil)){
+  df_pupil[[iName]] = unlist(df_pupil[[iName]])
+}
+df_pupil = as.data.frame(df_pupil)
+
+
+df_pupil = aggregate( Pupil.mm. ~ sub*light*Nback, data = df_pupil, FUN = 'mean')
+
+df = df[order(df$sub,df$light),]
+df_pupil = df_pupil[order(df_pupil$sub,df_pupil$light),]
+
+df$PD = df_pupil$Pupil.mm.
+
+tmp_df = df[df$hit>0.8,]
+p = ggplot(tmp_df, aes(x=PD, y=hit, group=Nback,color=light)) +
+  facet_grid(. ~ Nback ) +
+  geom_point(size=2, shape=23)+
+  geom_smooth(method=lm)
+
+
+##################################################################
+# f = list.files(folderName, pattern = "df_run", full.names=T)
+# df = fromJSON(file=f[1])
+
+f = list.files(folderName, pattern = "df_targetAll", full.names=T)
+df = fromJSON(file=f[1])
+
+for(iName in 1:length(df)){
+  df[[iName]] = unlist(df[[iName]])
+}
+df = as.data.frame(df)
+
+df = aggregate( hit ~ sub*Run*light*Nback, data = df, FUN = 'mean')
+
+df$hit = df$hit*100
+
+# anovakun(df,"sABC",long=T, peta=T)
+
+p_all$hit_run = dispLineGraph(df,config,"hit",c("Run","light","Nback"))+
+  facet_grid( . ~ Nback) 
+
+config$ylim = round(seq(82.5,100,2.5),4)
+config$ylim_stride = 0.25
+config$xlim = round(seq(1,6,1),4)
+config$xlim_stride = 0.5
+
+p_all$hit_run = setEmptyStyle(p_all$hit_run,config)+
+  scale_x_continuous(breaks = config$xlim)+
+  theme(
+    # legend.justification=c(0,1), legend.position=c(1,1),
+    # legend.position="right",
+    legend.position="none",
+    # legend.justification=c(0,1), legend.position=c(0,1),
+    # axis.text.x = element_text(angle = 30, hjust = 1),
+    # legend.title=element_blank()
+  )
+
+p_all$hit_run$size = c(8,6)
+
+
+```
+
+### Accuracy
+
+To see the effect of light on the task performance of N-back task, we compared the hit rate between the lighting condition as illustrated in Figure 2C. We found the main effect of light showing that the the hit rate under high ipRGC was higher than under low ipRGC (`r showAnovaSummary(hit_anova,bf_table,2,1)`). There are significant of interaction between N-back and light condition (`r showAnovaSummary(hit_anova,bf_table,6,3)`). Post analysis showed that the higher accuracy under high ipRGC was seen in the 2-back but not in the 1-back (1-back;`r showTtestSummary(ttest_1back)`, 2-back;`r showTtestSummary(ttest_2back)`). As an effect of working memory load on accuracy, the hit rate of 1-back task is higher than of 2-back task (`r showAnovaSummary(hit_anova,bf_table,4,2)`). 
+The False alarm also decreased in the 2-back task under high ipRGC with marginaly significance (`r showTtestSummary(ttestFA_2back)`). The details of hit, miss, false alarm and correct rejection are shown in Tables S1.
+
+
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE, include=FALSE}
+
+f = list.files(folderName, pattern = "df_RT.json", full.names=T)
+df = fromJSON(file=f[1])
+
+for(iName in 1:length(df)){
+  df[[iName]] = unlist(df[[iName]])
+}
+
+df = as.data.frame(df)
+
+df_ave = aggregate( RT ~ sub*light*Nback, data = df, FUN = 'mean')
+
+# anovakun(df_ave,"sAB",long=T, peta=T)
+
+# df$light = factor(df$light ,levels = unique(df$light))
+# df$sub = factor(df$sub,levels = unique(df$sub))
+# df$Nback = factor(df$Nback,levels = unique(df$Nback))
+# 
+# bf_table = anovaBF(RT ~ light*Nback + sub, data=df, whichRandom = "sub",progress=FALSE)
+# 
+# x1 = df_ave[(df_ave$Nback=="1-back")&(df_ave$light=="high ipRGC"),]$RT
+# x2 = df_ave[(df_ave$Nback=="1-back")&(df_ave$light=="low ipRGC"),]$RT
+# 
+# ttest_1back = getTtestSummary(x1,x2)
+# print(getTtestSummary(x1,x2))
+# 
+# x1 = df_ave[(df_ave$Nback=="2-back")&(df_ave$light=="high ipRGC"),]$RT
+# x2 = df_ave[(df_ave$Nback=="2-back")&(df_ave$light=="low ipRGC"),]$RT
+# 
+# ttest_2back = getTtestSummary(x1,x2)
+# print(getTtestSummary(x1,x2))
+
+modelList = c(
+  "RT ~ light + (1| sub)"
+)
+
+estimateAll = NULL
+count = 1
+for(inback in unique(df$Nback)){
+  tmp_df = df[(df$Nback==inback),]
+
+  aic_res = NULL
+  for( m in modelList){
+    eval(parse(text=paste0(" m_",count, " <- lmer(",m,", data=tmp_df)")))
+    # sm = summary(model_cand)
+    # print(sm)
+  }
+  count = count+1
+}
+
+##################################################################
+
+config$grCol = c("#222222","#AB004A")
+
+p_all$RT = dispLineGraph(df_ave,config,"RT",c("light","light","Nback"))+
+  facet_grid(. ~ Nback )
+
+
+config$ylim = round(seq(500,660,20),4)
+config$ylim_stride = 2
+config$xlim = round(seq(1,2,1),4)
+config$xlim_stride = 0.1
+
+p_all$RT =setEmptyStyle(p_all$RT,config)+
+  # scale_x_continuous(breaks = config$xlim)
+  theme(
+  legend.position="none",
+  axis.text.x = element_text(angle = 30, hjust = 1),
+  )
+
+p_all$RT$size = c(8,6)
+
+# +
+#   geom_signif(data=annotation_df,
+#               aes( xmin=start,xmax=end,annotations=label,y_position=y),
+#               textsize = 5, size=0.2, tip_length = 0.00,family=fontFamily,manual = TRUE)
+
+# df_RT_sd = df[(df$RT<2000)&(df$hit == 1),]
+
+
+##################################################################
+
+df_RT_sd = aggregate( RT ~ sub*Run*light*Nback, data = df, FUN = 'sd')
+
+p_all$RT_sd = dispLineGraph(df_RT_sd,config,"RT",c("Run","light","Nback"))+
+  facet_grid(. ~ Nback )
+
+# tmp_df_std = aggregate( RT ~ sub*light*Nback, data = tmp_df_std, FUN = 'mean')
+# anovakun(df_RT_sd,"sAB",long=T, peta=T)
+
+config$label_x = "Run"
+config$label_y = "Standard deviation of RT"
+
+config$ylim = round(seq(80,240,40),4)
+config$ylim_stride = 4
+config$xlim = round(seq(1,6,1),4)
+config$xlim_stride = 0.1
+
+config$label_x = "S.D. of RTs"
+
+p_all$RT_sd = setEmptyStyle(p_all$RT_sd,config)+
+  scale_x_continuous(breaks = config$xlim)
+  theme(
+  legend.position="none",
+  # axis.text.x = element_text(angle = 30, hjust = 1),
+  )
+
+p_all$RT_sd$size = c(8,6)
+
+
+##################################################################
+
+bootstrapRes = list()
+set.seed(42)
+bootstrap_sample = NULL
+N = 2000
+
+for (iNback in unique(df$Nback)){
+  
+  mean_boot_high <- numeric(N)
+  mean_boot_low <- numeric(N)
+  
+  tmp_df_high = df[(df$light=="high ipRGC")&
+                     (df$Nback==iNback),]$RT
+  tmp_df_low = df[(df$light=="low ipRGC")&
+                    (df$Nback==iNback),]$RT
+
+  obs_diff <- mean(tmp_df_high) - mean(tmp_df_low)
+  
+  obs_std <- sd(tmp_df_high) - sd(tmp_df_low)
+  
+  combined = c(tmp_df_high,tmp_df_low)
+  # hist(combined)
+  n1 <- length(tmp_df_high)
+  n2 <- length(tmp_df_low)
+  
+  diffs <- numeric(N)
+  diffs2 <- numeric(N)
+  # test <- numeric(N)
+  diffs_std <- numeric(N)
+  
+  
+  for (k in 1:N){
+    
+    strap_ind <- sample(1:length(tmp_df_high), replace = TRUE)
+    strap_dat <- tmp_df_high[strap_ind]
+    mean_boot_high[k] <- mean(strap_dat)
+    
+    strap_ind <- sample(1:length(tmp_df_low), replace = TRUE)
+    strap_dat <- tmp_df_low[strap_ind]
+    mean_boot_low[k] <- mean(strap_dat)
+    
+    sample1 <- sample(combined, size = n1, replace = TRUE)
+    sample2 <- sample(combined, size = n2, replace = TRUE)
+
+    sample3 <- sample(tmp_df_high, replace = TRUE)
+    sample4 <- sample(tmp_df_low, replace = TRUE)
+    
+    diffs[k] <- mean(sample1) - mean(sample2)
+    diffs2[k] <- mean(sample3) - mean(sample4)
+    
+    diffs_std[k] <- sd(sample1) - sd(sample2)
+    
+  }
+  
+  tmp_res = list()
+  tmp_res$CI = c(quantile(diffs2, 0.025)[1],quantile(diffs2, 0.975))
+  tmp_res$pVal = mean(abs(diffs) >= abs(obs_diff))
+  
+  tmp_res$pVal_sd = mean(abs(diffs_std) >= abs(obs_std))
+  
+  if(round(tmp_res$pVal,3)==0){
+    tmp_res$pLines = "p < 0.001"
+  }else{
+    tmp_res$pLines = paste0("$p$ = ",round(tmp_res$pVal,3))
+  }
+
+  bootstrapRes[[iNback]] = tmp_res
+  
+  # lower_ci <- quantile(diffs2, 0.025)
+  # upper_ci <- quantile(diffs2, 0.975)
+  # hist(diffs2)
+  # print(lower_ci)
+  # print(upper_ci)
+
+  # print(hist(diffs))
+  
+  bootstrap_sample_high = as.data.frame(mean_boot_high)
+  bootstrap_sample_high$light = "high"
+  bootstrap_sample_high$Nback =iNback
+
+  bootstrap_sample_high$RT = bootstrap_sample_high$mean_boot_high
+  bootstrap_sample_high$mean_boot_high = NULL
+
+  bootstrap_sample_low = as.data.frame(mean_boot_low)
+  bootstrap_sample_low$light = "low"
+  bootstrap_sample_low$Nback =iNback
+
+  bootstrap_sample_low$RT = bootstrap_sample_low$mean_boot_low
+  bootstrap_sample_low$mean_boot_low = NULL
+
+  bootstrap_sample = rbind(bootstrap_sample, bootstrap_sample_high)
+  bootstrap_sample = rbind(bootstrap_sample, bootstrap_sample_low)
+  
+}
+
+
+# x1 = bootstrap_sample[(bootstrap_sample$Nback=="1-back")&(bootstrap_sample$light=="high"),]$RT
+# x2 = bootstrap_sample[(bootstrap_sample$Nback=="1-back")&(bootstrap_sample$light=="low"),]$RT
+# 
+# ttest_1back_RT = getTtestSummary(x1,x2)
+# 
+# x1 = bootstrap_sample[(bootstrap_sample$Nback=="2-back")&(bootstrap_sample$light=="high"),]$RT
+# x2 = bootstrap_sample[(bootstrap_sample$Nback=="2-back")&(bootstrap_sample$light=="low"),]$RT
+# 
+# ttest_2back_RT = getTtestSummary(x1,x2)
+# 
+# x1 = bootstrap_sample[(bootstrap_sample$Nback=="1-back"),]$RT
+# x2 = bootstrap_sample[(bootstrap_sample$Nback=="2-back"),]$RT
+# 
+# ttest_nback_RT = getTtestSummary(x1,x2)
+
+# p=ggplot(bootstrap_sample, aes(x = RT, color=light)) +
+#   # geom_density(aes(fill=light),alpha=0.4)
+#   geom_histogram(position = "identity", bins = 50,alpha=0.4)
+
+
+p_all$RT_bootstrap <- ggplot(bootstrap_sample, aes(x = RT, y = ..density.., fill = light, group=interaction(light,Nback)))+
+   # facet_grid(Nback ~ . )+
+  geom_histogram(position = "identity", bins = 200, alpha = 0.6)+
+  # geom_density(aes(color = light), alpha = 0.6, show.legend = F)+
+  scale_fill_manual(values = c("#AB004A","#222222","#AB004A","#222222"))+
+  scale_color_manual(values = c("#AB004A","#222222","#AB004A","#222222"))
+
+config$ylim = round(seq(0,0.15,0.025),4)
+config$ylim_stride = 0.001
+config$xlim = round(seq(500,660,20),4)
+config$xlim_stride = 1
+
+p_all$RT_bootstrap = setEmptyStyle(p_all$RT_bootstrap,config)+
+  scale_x_continuous(breaks = config$xlim)+
+  theme(
+    # legend.position="none",
+    axis.text.x = element_text(angle = 30, hjust = 1),
+  )
+
+p_all$RT_bootstrap$size = c(8,6)
+
+print(bootstrapRes[["2-back"]]$pLines)
+
+# (CI[`r round(ttest_1back_RT$ttest$conf.int[1],3)`, `r round(ttest_1back_RT$ttest$conf.int[2],3)`], 
+# `r showTtestSummary(ttest_1back_RT)`; 
+# CI[`r round(ttest_2back_RT$ttest$conf.int[1],3)`, `r round(ttest_2back_RT$ttest$conf.int[2],3)`], 
+# `r showTtestSummary(ttest_2back_RT)`,respectively).
+
+
+
+```
+
+### RT
+
+Response time (RT) was calculated from the stimulus onset to the participants’ key presses. Linear mixed model analyses were conducted corresponds to the following formula: $RT \sim Light + (1+|Subject)$. To statistically assess whether the RTs differed between lighting conditions, 95% confidence intervals (CI) for the RTs were estimated with 10000 bootstrap samples. The estimated CIs of RTs between low and high ipRGC was 
+[`r round(bootstrapRes[["1-back"]]$CI[1],3)`, `r round(bootstrapRes[["1-back"]]$CI[2],3)`], 
+`r showLMESummary(m_1,"lightlow ipRGC")` for 1-back and 
+[`r round(bootstrapRes[["2-back"]]$CI[1],3)`, `r round(bootstrapRes[["2-back"]]$CI[2],3)`], 
+`r showLMESummary(m_2,"lightlow ipRGC")`
+for 2-back shown at top in Figure2D. The RTs was significantly faster for high ipRGC light for both 1- and 2-back task.
+
+<!-- Although the main effect of light condition did not show the differences of RT (`r showAnovaSummary(forDrawingSigANOVA,bf_table,2,1)`), post analysis showed marginaly significance of faster RTs under high ipRGC in the 1-back but not in the 2-back (1-back;`r showTtestSummary(ttest_1back)`, 2-back;`r showTtestSummary(ttest_2back)`).  -->
+
+
+
+
+
+
+
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE, include=FALSE}
+
+
+f = list.files(folderName, pattern = "questionaire.json", full.names=T)
+df = fromJSON(file=f[1])
+
+for(iName in 1:length(df)){
+  df[[iName]] = unlist(df[[iName]])
+}
+df = as.data.frame(df)
+
+df$light = factor( df$light ,levels=c("low ipRGC","high ipRGC"))
+
+tmp_df = df[df$Task=="Sleepiness",]
+tmp_df$ans_Sleepiness = tmp_df$ans_norm
+tmp_df$ans_Fatigue = df[df$Task=="Fatigue",]$ans_norm
+
+tmp_df$Sleepiness <- scale(tmp_df$Sleepiness)[,1]
+tmp_df$Fatigue <- scale(tmp_df$Fatigue)[,1]
+
+tmp_df$sub = factor(tmp_df$sub,levels=unique(tmp_df$sub))
+
+p_all$rating_corr = ggplot(tmp_df,aes(x=ans_Sleepiness,
+                                      y=ans_Fatigue,
+                                      colour = sub,
+                                      # group=interaction(light,Run)
+                                      # group=interaction(light,sub)
+                                      group = sub
+                                      ))+
+  facet_wrap(sub ~ .)+
+  stat_smooth(method = "lm", se = FALSE, size = 1)+
+  geom_point()
+
+# p_all$rating_corr = ggplot(df,aes(x=Sleepiness,y=Fatigue,colour = light, group=interaction(light,sub)))+
+# facet_grid(. ~ Run)+
+# facet_wrap(. ~ sub)+
+# geom_jitter(width = 0.1, height=0.1)+
+# scale_fill_manual(values = c("#AB004A","#222222"))+
+# scale_color_manual(values = c("#222222","#AB004A"))
+
+config$ylim = round(seq(0,10,1),4)
+config$ylim_stride = 1
+config$xlim = round(seq(0,10,1),4)
+config$xlim_stride = 1
+
+p_all$rating_corr = setEmptyStyle(p_all$rating_corr,config)+
+  scale_x_continuous(breaks = config$xlim)+
+  coord_equal()+
+  theme(
+    legend.justification=c(1,0), legend.position=c(1,0.1),
+    legend.title=element_blank()
+  )
+
+p_all$rating_corr$size = c(14,6)
+
+#### Run * Question ####################################################################
+
+config$shape=F
+config$label_x = "Run"
+
+df$ans_plot = df$ans_norm
+df$ans_plot = df$ans
+
+p_all$question = dispLineGraph(df,config,"ans_plot",c("Run","light","Task"))+
+  facet_grid(. ~ Task )
+
+config$ylim = round(seq(2,7,1),4)
+config$ylim_stride = 0.1
+config$xlim = round(seq(1,6,1),4)
+config$xlim_stride = 0.5
+
+p_all$question = setEmptyStyle(p_all$question,config)+
+  scale_x_continuous(breaks = config$xlim)+
+  theme(
+    legend.justification=c(1,0), legend.position=c(1,0.1),
+    legend.title=element_blank()
+  )
+
+p_all$question$size = c(8,6)
+
+
+corrAll = NULL
+for (iSub in unique(df$sub)){
+  for (iTask in unique(df$Task)){
+    # for (iLight in unique(df$light)){
+      
+      x = df[
+        # (df$light==iLight)&
+               (df$Task==iTask)&
+               (df$sub == iSub),]$Run
+      
+      y = df[
+        # (df$light==iLight)&
+               (df$Task==iTask)&
+               (df$sub == iSub),]$ans
+      
+      tmp_df = data.frame(
+        sub = iSub,
+        corr = cor.test(x,y)[["estimate"]][["cor"]],
+        Task = iTask
+        # light = iLight
+      )
+      
+      corrAll = rbind(corrAll,tmp_df)
+    # }
+  }
+}
+
+# x = df[(df$Task=="Fatigue"),]$Run
+# y = df[(df$Task=="Fatigue"),]$ans
+# 
+# print(cor.test(x,y)[["estimate"]][["cor"]])
+# 
+# x = df[(df$Task=="Sleepiness"),]$Run
+# y = df[(df$Task=="Sleepiness"),]$ans
+# 
+# print(cor.test(x,y)[["estimate"]][["cor"]])
+
+# p_all$corrAll = dispLineGraph(corrAll,config,"corr",c("Task"))
+
+
+#### make model ####################################################################
+
+df$group = "low ipRGC 1st"
+for(iSub in sort(unique(df$sub))){
+  if (df[(df$sub==iSub)&(df$light=="low ipRGC"),]$orderNum[1] == 1){
+    df[df$sub==iSub,]$group = "high ipRGC 1st"
+  }
+}
+
+modelList = c(
+  "ans ~ light * group * Run + (1| sub)"
+  # "ans ~ light + (1+Run| sub)"
+)
+
+df$lightNum = 0
+df[df$light=="high ipRGC",]$lightNum = 1
+
+df$groupNum = 0
+df[df$group=="high ipRGC 1st",]$groupNum = 1
+
+df$ans_regressout = 0
+df$regressor = 0
+df$model = 0
+
+for(mmName in c("Sleepiness","Fatigue")){
+  tmp_df = df[df$Task==mmName,]
+  # tmp_df = aggregate( ans ~ sub*lightNum*groupNum*Run, data = tmp_df, FUN = 'mean')
+  # print(mmName)
+  aic_res = NULL
+  for( m in modelList){
+    eval(parse(text=paste0(" model_cand <- lmer(",m,", data=tmp_df)")))
+    # print(m)
+    # summary(model_cand)
+    # print(AIC(model_cand))
+    
+    aic_res = c(aic_res,AIC(model_cand))
+  }
+  eval(parse(text=paste0(" m_", mmName," <- lmer(",modelList[which.min(aic_res)],", data=tmp_df)")))
+  print(eval(parse(text=paste0("summary(m_", mmName,")"))))
+  
+  # print(eval(parse(text=paste0("anova(lmer(",modelList[which.min(aic_res)],", data=tmp_df))"))))
+  
+}
+
+#### average ####################################################################
+
+config$shape=F
+config$linetype=F
+config$label_x = "Run"
+
+p_all$questionBwGroup = dispLineGraph(df,config,"ans",c("light","group","Task"))+
+  facet_grid(. ~ Task )
+
+
+config$ylim = round(seq(2,8,1),4)
+config$ylim_stride = 0.1
+config$xlim = round(seq(1,2,1),4)
+config$xlim_stride = 0.5
+
+p_all$questionBwGroup = setEmptyStyle(p_all$questionBwGroup,config)+
+  theme(
+    legend.position="none",
+    # legend.justification=c(0,1), legend.position=c(0,1),
+    axis.text.x = element_text(angle = 30, hjust = 1),
+  )
+
+p_all$questionBwGroup$size = c(8,6)
+
+
+
+###################################################
+
+f = list.files(folderName, pattern = "data_timeCourse_RunAve.json", full.names=T)
+df2 = fromJSON(file=f[1])
+
+for(iName in 1:length(df2)){
+  df2[[iName]] = unlist(df2[[iName]])
+}
+
+df2 = as.data.frame(df2)
+df2 = df2[order(df2$sub,df2$Run,df2$Nback),]
+df = df[order(df$sub,df$Run),]
+
+f = list.files(folderName, pattern = "df_targetAll", full.names=T)
+df_pupil = fromJSON(file=f[1])
+
+for(iName in 1:length(df_pupil)){
+  df_pupil[[iName]] = unlist(df_pupil[[iName]])
+}
+df_pupil = as.data.frame(df_pupil)
+
+df_RT = df_pupil[df_pupil$hit==1,]
+df_RT = aggregate( . ~ sub*Run*light*Nback, data = df_RT, FUN = 'mean')
+
+df_pupil$PD_phasic= df_pupil$Pupil.a.u..
+
+df_pupil = aggregate( . ~ sub*Run*light*Nback, data = df_pupil, FUN = 'mean')
+# df_pupil = aggregate( . ~ sub*Run*light*Nback, data = df_pupil, FUN = 'sd')
+
+df_pupil = df_pupil[order(df_pupil$sub,df_pupil$Run,df_pupil$Nback),]
+df_RT = df_RT[order(df_RT$sub,df_RT$Run,df_RT$Nback),]
+
+df_pupil$RT = df_RT$RT
+df_pupil$Sleepiness = df2$Sleepiness
+df_pupil$Fatigue  = df2$Fatigue
+
+df_pupil$lightNum = 0
+df_pupil[df_pupil$light=="high ipRGC",]$lightNum = 1
+
+modelList = c(
+  "hit ~ lightNum + Sleepiness + Fatigue + (1+Run| sub)"
+  # "RT ~ lightNum + Sleepiness + Fatigue + (1 + Run| sub)"
+)
+
+df_pupil$hit <- scale(df_pupil$hit)[,1]
+df_pupil$RT <- scale(df_pupil$RT)[,1]
+df_pupil$lightNum <- scale(df_pupil$lightNum)[,1]
+df_pupil$Sleepiness <- scale(df_pupil$Sleepiness)[,1]
+df_pupil$Fatigue <- scale(df_pupil$Fatigue)[,1]
+
+estimateAll = NULL
+for(inback in unique(df_pupil$Nback)){
+
+  tmp_df = df_pupil[(df_pupil$Nback==inback),]
+  
+  aic_res = NULL
+  bic_res = NULL
+  for( m in modelList){
+    
+    # tmp_df = aggregate( . ~ sub*light*Nback, data = tmp_df, FUN = 'mean')
+
+    eval(parse(text=paste0(" model_cand <- lmer(",m,", data=tmp_df)")))
+    # print(summary(model_cand))
+    sm = summary(model_cand)
+    # print(AIC(model_cand))
+    # fixef(model_cand)
+    
+    aic_res = c(aic_res,AIC(model_cand))
+    bic_res = c(bic_res,BIC(model_cand))
+    
+  }
+  
+  eval(parse(text=paste0(" m <- lmer(",modelList[which.min(aic_res)],", data=tmp_df)")))
+  print(modelList[which.min(aic_res)])
+  sm = summary(m)
+  print(sm)
+
+    # tmp_df$model = tmp_df$lightNum*fixef(m)["lightNum"]+
+  #                 tmp_df$Sleepiness*fixef(m)["Sleepiness"]+
+  #                 tmp_df$Fatigue*fixef(m)["Fatigue"]+
+  #                 tmp_df$Run*fixef(m)["Run"]
+  #           
+  # c = 1
+  # for(iSub in unique(tmp_df$sub)){
+  #   
+  #   
+  #   tmp_df[tmp_df$sub == iSub,]$model = 
+  #     tmp_df[tmp_df$sub == iSub,]$model + 
+  #     fixef(m)["(Intercept)"] + 
+  #     ranef(m)[["sub"]][["(Intercept)"]][c]
+  #   c = c+1
+  # }
+  
+  # plot( tmp_df$hit, tmp_df$model)
+  
+  # x = tmp_df$hit
+  # y = tmp_df$hit+tmp_df$Run*fixef(m)["Run"]
+  # 
+  # plot( tmp_df$hit, tmp_df$hit+tmp_df$Run*fixef(m)["Run"])
+  # plot( tmp_df$hit, tmp_df$model)
+  
+  tmp = data.frame(
+    Estimate = c(
+      # sm$coefficients["BP",]["Estimate"],
+      # sm$coefficients["PD_phasic",]["Estimate"],
+      sm$coefficients["Sleepiness",]["Estimate"],
+      sm$coefficients["Fatigue",]["Estimate"],
+      sm$coefficients["lightNum",]["Estimate"]),
+    factor = c(
+      # "Baseline",
+      # "Transient",
+      "Sleepiness",
+      "Fatigue",
+      "ipRGC"),
+    pVal = c(
+      # sm$coefficients["BP",]["Pr(>|t|)"],
+      # sm$coefficients["PD_phasic",]["Pr(>|t|)"],
+      sm$coefficients["Sleepiness",]["Pr(>|t|)"],
+      sm$coefficients["Fatigue",]["Pr(>|t|)"],
+      sm$coefficients["lightNum",]["Pr(>|t|)"]),
+    min = c(
+      # sm$coefficients["BP",]["Pr(>|t|)"],
+      # sm$coefficients["PD_phasic",]["Pr(>|t|)"],
+      sm$coefficients["Sleepiness",]["Estimate"]-sm$coefficients["Sleepiness",]["Std. Error"],
+      sm$coefficients["Fatigue",]["Estimate"]-sm$coefficients["Fatigue",]["Std. Error"],
+      sm$coefficients["lightNum",]["Estimate"]-sm$coefficients["lightNum",]["Std. Error"]),
+    max = c(
+      # sm$coefficients["BP",]["Pr(>|t|)"],
+      # sm$coefficients["PD_phasic",]["Pr(>|t|)"],
+      sm$coefficients["Sleepiness",]["Estimate"]+sm$coefficients["Sleepiness",]["Std. Error"],
+      sm$coefficients["Fatigue",]["Estimate"]+sm$coefficients["Fatigue",]["Std. Error"],
+      sm$coefficients["lightNum",]["Estimate"]+sm$coefficients["lightNum",]["Std. Error"]),
+    t = c(
+      # sm$coefficients["BP",]["Pr(>|t|)"],
+      # sm$coefficients["PD_phasic",]["Pr(>|t|)"],
+      sm$coefficients["Sleepiness",]["t value"],
+      sm$coefficients["Fatigue",]["t value"],
+      sm$coefficients["lightNum",]["t value"])
+  )
+
+  tmp$formula = c(sm$call$formula)
+  tmp$Nback = inback
+  
+  estimateAll = rbind(estimateAll,tmp)
+}
+
+annotation_df <- NULL
+for(inback in unique(estimateAll$Nback)){
+  for(iFactor in unique(estimateAll$factor)){
+    
+    tmp_annotation_df <- data.frame(
+      Nback = inback,
+      start = iFactor,
+      end = iFactor,
+      y = 0.3
+    )
+    pVal = estimateAll[(estimateAll$Nback == inback)&(estimateAll$factor == iFactor),"pVal"]
+    if(pVal  < 0.05){
+      tmp_annotation_df$label = "*"
+    }else if((pVal > 0.05) & (pVal < 0.1)){
+      tmp_annotation_df$label = "+"
+    }else{
+      tmp_annotation_df$label = "n.s."
+    }
+    annotation_df = rbind(annotation_df,tmp_annotation_df)
+  }
+}
+
+estimateAll$factor = factor(estimateAll$factor ,levels = c("ipRGC","Sleepiness","Fatigue"))
+
+p_all$weight = ggplot(estimateAll,aes(x=factor,y=Estimate))+
+  geom_point(size = 4)+
+  geom_errorbar(aes(ymin = min, ymax = max),
+                size = 0.1, width = 0.1,
+                position = position_dodge(.1),color="black")+
+  facet_grid(. ~ Nback )+
+  geom_signif(data=annotation_df,aes(xmin=start,
+                                     xmax=end,
+                                     annotations=label,y_position=y),
+            textsize = 5, size=0.2, tip_length = 0.00,color="black",family=fontFamily,manual = TRUE)
+
+config$ylim = round(seq(-0.3,0.3,0.1),4)
+config$ylim_stride = 0.01
+config$xlim = round(seq(1,3,1),4)
+config$xlim_stride = 0.5
+config$label_y = "Weight"
+
+p_all$weight = setEmptyStyle(p_all$weight,config)+
+  # scale_x_continuous(breaks = config$xlim)+
+  theme(
+    # legend.justification=c(0,1), legend.position=c(1,1),
+    # legend.position="right",
+    legend.position="none",
+    # legend.justification=c(0,1), legend.position=c(0,1),
+    # axis.text.x = element_text(angle = 30, hjust = 1),
+    # legend.title=element_blank()
+  )
+
+p_all$weight$size = c(7,5)
+
+##### LMM ###################################################################
+
+modelList = c(
+  "RT ~ lightNum + Sleepiness + Fatigue + (1 + Run| sub)"
+)
+
+
+estimateRTAll = NULL
+for(inback in unique(df_pupil$Nback)){
+
+  tmp_df = df_pupil[(df_pupil$Nback==inback),]
+  
+  aic_res = NULL
+  bic_res = NULL
+  for( m in modelList){
+    
+    eval(parse(text=paste0(" model_cand <- lmer(",m,", data=tmp_df)")))
+    sm = summary(model_cand)
+    
+    aic_res = c(aic_res,AIC(model_cand))
+    bic_res = c(bic_res,BIC(model_cand))
+    
+  }
+  
+  eval(parse(text=paste0(" m <- lmer(",modelList[which.min(aic_res)],", data=tmp_df)")))
+  print(modelList[which.min(aic_res)])
+  sm = summary(m)
+  
+  tmp = data.frame(
+    Estimate = c(
+      # sm$coefficients["BP",]["Estimate"],
+      # sm$coefficients["PD_phasic",]["Estimate"],
+      sm$coefficients["Sleepiness",]["Estimate"],
+      sm$coefficients["Fatigue",]["Estimate"],
+      sm$coefficients["lightNum",]["Estimate"]),
+    factor = c(
+      # "Baseline",
+      # "Transient",
+      "Sleepiness",
+      "Fatigue",
+      "ipRGC"),
+    pVal = c(
+      # sm$coefficients["BP",]["Pr(>|t|)"],
+      # sm$coefficients["PD_phasic",]["Pr(>|t|)"],
+      sm$coefficients["Sleepiness",]["Pr(>|t|)"],
+      sm$coefficients["Fatigue",]["Pr(>|t|)"],
+      sm$coefficients["lightNum",]["Pr(>|t|)"]),
+    min = c(
+      # sm$coefficients["BP",]["Pr(>|t|)"],
+      # sm$coefficients["PD_phasic",]["Pr(>|t|)"],
+      sm$coefficients["Sleepiness",]["Estimate"]-sm$coefficients["Sleepiness",]["Std. Error"],
+      sm$coefficients["Fatigue",]["Estimate"]-sm$coefficients["Fatigue",]["Std. Error"],
+      sm$coefficients["lightNum",]["Estimate"]-sm$coefficients["lightNum",]["Std. Error"]),
+    max = c(
+      # sm$coefficients["BP",]["Pr(>|t|)"],
+      # sm$coefficients["PD_phasic",]["Pr(>|t|)"],
+      sm$coefficients["Sleepiness",]["Estimate"]+sm$coefficients["Sleepiness",]["Std. Error"],
+      sm$coefficients["Fatigue",]["Estimate"]+sm$coefficients["Fatigue",]["Std. Error"],
+      sm$coefficients["lightNum",]["Estimate"]+sm$coefficients["lightNum",]["Std. Error"]),
+    t = c(
+      # sm$coefficients["BP",]["Pr(>|t|)"],
+      # sm$coefficients["PD_phasic",]["Pr(>|t|)"],
+      sm$coefficients["Sleepiness",]["t value"],
+      sm$coefficients["Fatigue",]["t value"],
+      sm$coefficients["lightNum",]["t value"])
+  )
+
+  tmp$formula = c(sm$call$formula)
+  tmp$Nback = inback
+  
+  estimateRTAll = rbind(estimateRTAll,tmp)
+}
+
+estimateRTAll$factor = factor(estimateRTAll$factor ,levels = c("ipRGC","Sleepiness","Fatigue"))
+
+annotation_df = NULL
+
+for(inback in unique(estimateRTAll$Nback)){
+  for(iFactor in unique(estimateRTAll$factor)){
+    
+    tmp_annotation_df <- data.frame(
+      Nback = inback,
+      start = iFactor,
+      end = iFactor,
+      y = 0.1
+    )
+    pVal = estimateRTAll[(estimateRTAll$Nback == inback)&(estimateRTAll$factor == iFactor),"pVal"]
+    if(pVal  < 0.05){
+      tmp_annotation_df$label = "*"
+    }else if((pVal > 0.05) & (pVal < 0.1)){
+      tmp_annotation_df$label = "+"
+    }else{
+      tmp_annotation_df$label = "n.s."
+    }
+    annotation_df = rbind(annotation_df,tmp_annotation_df)
+  }
+}
+
+p_all$weightRT = ggplot(estimateRTAll,aes(x=factor,y=Estimate))+
+  geom_point(size = 4)+
+  geom_errorbar(aes(ymin = min, ymax = max),
+                size = 0.1, width = 0.1,
+                position = position_dodge(.1),color="black")+
+  facet_grid(. ~ Nback )+
+  geom_signif(data=annotation_df,aes(xmin=start,
+                                     xmax=end,
+                                     annotations=label,y_position=y),
+            textsize = 5, size=0.2, tip_length = 0.00,color="black",family=fontFamily,manual = TRUE)
+
+
+config$ylim = round(seq(-0.3,0.2,0.1),4)
+config$ylim_stride = 0.01
+config$xlim = round(seq(1,3,1),4)
+config$xlim_stride = 0.5
+
+
+p_all$weightRT = setEmptyStyle(p_all$weightRT,config) +
+  theme(
+    legend.position="none",
+  )
+
+p_all$weightRT$size = c(7,5)
+
+
+
+ # and 1st to 2nd block as well (`r showLMESummary(m_Sleepiness,"grouplow ipRGC 1st")`, `r showLMESummary(m_Fatigue,"grouplow ipRGC 1st")`). 
+
+# <!-- We report the fixed effects of following model since the goodness of fit for the model including the order of the session is better than the model with light and run (`r showLMESummary(m_Sleepiness,"lightNum")`,  -->
+# <!-- `r showLMESummary(m_Sleepiness,"Run")`). -->
+# 
+# <!-- We report the fixed effects of following model since the goodness of fit for the model including the order of the session is better than the model with light and run (`r showLMESummary(m_Fatigue,"lightNum")`,  -->
+# <!-- `r showLMESummary(m_Fatigue,"Run")`). -->
+
+```
+
+## Questionare
+
+To test whether the light condition affect to participants’ fatigue and Sleepiness, we asked the participants to rate their subjective Fatigue and Sleepiness from 0-10. We report the fixed effects of following model including the order of the session is better than the model with light and run. The scores was negatively affected by the light condition, indicating that the high ipRGC light contributed less subjective score for both fatigue and Sleepiness (`r showLMESummary(m_Sleepiness,"lighthigh ipRGC")`, `r showLMESummary(m_Fatigue,"lighthigh ipRGC")`). With increasing time on the task, the subjective fatigue and Sleepiness score was significantly increased from run 1 to 6 (`r showLMESummary(m_Sleepiness,"Run")`, `r showLMESummary(m_Fatigue,"Run")`)
+
+To determine how the light condition affected the hit rate compared with participants' fatigue and Sleepiness, we modeled the LME using light condition, Sleepiness, and Fatigue as fixed effects. Light condition and Fatigue are positively affected by the hit rate for 2-back task ( i.e., higher ipRGC and subjective fatigue increased the hit rate)
+($t$=`r round(estimateAll[(estimateAll$factor=="ipRGC")&(estimateAll$Nback=="2-back"),]$t,3)`, 
+$p$=`r round(estimateAll[(estimateAll$factor=="ipRGC")&(estimateAll$Nback=="2-back"),]$pVal,3)`;
+$t$=`r round(estimateAll[(estimateAll$factor=="Fatigue")&(estimateAll$Nback=="2-back"),]$t,3)`, 
+$p$=`r round(estimateAll[(estimateAll$factor=="Fatigue")&(estimateAll$Nback=="2-back"),]$pVal,3)`). 
+On the other hand, Sleepiness negatively contributed to the hit rate (i.e., lower Sleepiness improved the hit rate)
+($t$=`r round(estimateAll[(estimateAll$factor=="Sleepiness")&(estimateAll$Nback=="2-back"),]$t,3)`, 
+$p$=`r round(estimateAll[(estimateAll$factor=="Sleepiness")&(estimateAll$Nback=="2-back"),]$pVal,3)`).
+
+
+<!-- `r modelList` -->
+$Rating \sim Light + Session + Run + (1|Subject)$
+
+$Hit\ rate \sim Light + Sleepiness + Fatigue + (1+Run|Subject)$
+
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE, include=FALSE}
+
+f = list.files(folderName, pattern = "data_timeCourse_each.json", full.names=T)
+df_pupil = fromJSON(file=f[1])
+
+for(iName in 1:length(df_pupil)){
+  df_pupil[[iName]] = unlist(df_pupil[[iName]])
+}
+df_pupil = as.data.frame(df_pupil)
+
+df = aggregate( Pupil.mm. ~ sub*light*Nback, data = df_pupil[df_pupil$Time.s.>=0,], FUN = 'mean')
+anovakun(df,"sAB",long=T, peta=T)
+
+df$light = factor(df$light ,levels = unique(df$light))
+df$sub = factor(df$sub,levels = unique(df$sub))
+df$Nback = factor(df$Nback,levels = unique(df$Nback))
+
+bf_table = anovaBF(Pupil.mm. ~ light*Nback + sub, data=df, whichRandom = "sub",progress=FALSE)
+
+x1 = df[(df$Nback=="1-back")&(df$light=="high ipRGC"),]$Pupil.mm.
+x2 = df[(df$Nback=="1-back")&(df$light=="low ipRGC"),]$Pupil.mm.
+
+ttest_1back = getTtestSummary(x1,x2)
+
+x1 = df[(df$Nback=="2-back")&(df$light=="high ipRGC"),]$Pupil.mm.
+x2 = df[(df$Nback=="2-back")&(df$light=="low ipRGC"),]$Pupil.mm.
+
+ttest_2back = getTtestSummary(x1,x2)
+
+annotation_df$label = c(ttest_1back$sig,ttest_2back$sig)
+annotation_df$y=0.03
+
+df_pupil$light = factor( df_pupil$light ,levels=c("low ipRGC","high ipRGC"))
+
+config <- list(lim_x = c(min(df_pupil$Time.s.),max(df_pupil$Time.s.)),
+               lim_y = c(-0.05,0.05),
+               alpha = 0.1,
+               stride = 0.1,
+               label_x = "Time [sec]",
+               label_y = "Pupil size[mm]",
+               title = "",
+               linetype = T,
+               grCol = c("#222222","#AB004A"),
+               shape = F
+)
+
+df_pupil$data_x = df_pupil$Time.s.
+p_all$pupilTimeCourse <- disp(df_pupil,config,"Pupil.mm.",1,c("light","Nback")) +
+  # facet_grid(Run ~ .)+
+  theme(
+    # legend.justification=c(0,1), legend.position=c(0,1),
+    # legend.justification=c(0,1), legend.position=c(1,1)
+    legend.position="right",
+    # legend.position="none",
+  )
+
+config$ylim = round(seq(-0.06,0.06,0.02),4)
+config$ylim_stride = 0.01
+config$xlim = round(seq(-0.2,1.6,0.2),2)
+config$xlim_stride = 0.05
+
+config$label_x = ""
+p_all$pupilTimeCourse = setEmptyStyle(p_all$pupilTimeCourse,config)+
+  scale_x_continuous(breaks = config$xlim)
+
+p_all$pupilTimeCourse$size = c(10,6)
+
+
+############ phasic ave ############
+
+df$light = factor( df$light ,levels=c("low ipRGC","high ipRGC"))
+
+p_all$pupil_phasic_ave = dispLineGraph(df,config,"Pupil.mm.",c("light","light","Nback"))+
+  facet_grid(. ~ Nback)
+# +
+#   geom_signif(data=annotation_df,
+#               aes( xmin=start,xmax=end,annotations=label,y_position=y),
+#               textsize = 5, size=0.2, tip_length = 0.00,family=fontFamily,manual = TRUE)
+
+
+# config$ylim = round(seq(0.03,0.06,0.01),4)
+config$ylim = round(seq(0,0.04,0.01),4)
+config$ylim_stride = 0.01
+config$xlim = round(seq(1,2,1),4)
+config$xlim_stride = 0.5
+
+p_all$pupil_phasic_ave = setEmptyStyle(p_all$pupil_phasic_ave,config)+
+  theme(
+    # legend.justification=c(0,1), legend.position=c(0,1),
+    # legend.justification=c(0,1), legend.position=c(1,1),
+    # legend.position="right",
+    # legend.title=element_blank(),
+    legend.position="none",
+    axis.text.x = element_text(angle = 30, hjust = 1)
+  )
+
+p_all$pupil_phasic_ave$size = c(6,6)
+
+```
+
+### Phasic pupil response
+<!-- `r showAnovaSummary(forDrawingSigANOVA,bf_table,2,1)` -->
+<!-- `r showAnovaSummary(forDrawingSigANOVA,bf_table,4,2)` -->
+<!-- `r showAnovaSummary(forDrawingSigANOVA,bf_table,6,3)` -->
+
+
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE}
+
+p_all$combinedFigs = combineGraphs2(c("pupil_ave","hit","RT_bootstrap"),p_all,c(1,3))
+p_all$combinedFigs$size=c(15,5)
+
+p_all$combinedFigs2 = combineGraphs2(c("question","weight"),p_all,c(1,2))
+p_all$combinedFigs2$size=c(10,5)
+
+# ```{r, message=FALSE, warning=FALSE, echo=FALSE, results='asis'}
+# print(kable(df_SDT_1back, format = "markdown", digits = 3, row.names = NA,caption = "test"))
+# ```
+```
+
+
+# Supplementary Figure
+## Table for hit, miss, FA and CR
+### 1-back
+`r  kable(df_SDT_1back, format = "markdown", digits = 3, row.names = NA)`
+### 2-back
+`r  kable(df_SDT_2back, format = "markdown", digits = 3, row.names = NA)`
+
+<!-- ## Table for Questionare -->
+<!-- `r kable(summary(m_Sleepiness)$coefficients, format = "markdown", digits = 3, row.names = NA)` -->
+<!-- `r kable(summary(m_Fatigue)$coefficients, format = "markdown", digits = 3, row.names = NA)` -->
+
+# corr
+```{r, message=FALSE, warning=FALSE, echo=FALSE, include=FALSE}
+
+f = list.files(folderName, pattern = "data_timeCourse_RunAve.json", full.names=T)
+df2 = fromJSON(file=f[1])
+
+for(iName in 1:length(df2)){
+  df2[[iName]] = unlist(df2[[iName]])
+}
+df2 = as.data.frame(df2)
+
+f = list.files(folderName, pattern = "df_targetAll", full.names=T)
+df_pupil = fromJSON(file=f[1])
+
+for(iName in 1:length(df_pupil)){
+  df_pupil[[iName]] = unlist(df_pupil[[iName]])
+}
+df_pupil = as.data.frame(df_pupil)
+
+df_pupil = aggregate( . ~ sub*Run*light*Nback, data = df_pupil, FUN = 'mean')
+# df2 = aggregate( . ~ sub*Run*light*Nback, data = df2, FUN = 'mean')
+
+df_pupil = df_pupil[order(df_pupil$sub,df_pupil$Run,df_pupil$Nback),]
+df2 = df2[order(df2$sub,df2$Run,df2$Nback),]
+
+df_pupil$Sleepiness = df2$Sleepiness
+df_pupil$Fatigue  = df2$Fatigue
+
+tmp_plot = df_pupil[df_pupil["Nback"]=="2-back",]
+
+df_pupil$sub = factor(df_pupil$sub,levels=unique(df_pupil$sub))
+
+m = lmer(hit ~ Fatigue + Run + (1|sub), data=df_pupil)
+summary(m)
+
+m = lmer(hit ~ Sleepiness + Run + (1|sub), data=df_pupil)
+summary(m)
+
+m = lmer(Fatigue ~ light + (1+Run|sub), data=df_pupil)
+summary(m)
+
+m = lmer(Sleepiness ~ light + (1+Run|sub), data=df_pupil)
+summary(m)
+
+config$ylim = round(seq(0.5,1,0.1),4)
+config$ylim_stride = 0.01
+config$xlim = round(seq(0,10,1),4)
+config$xlim_stride = 0.5
+
+p_all$hit_fatigue = ggplot(df_pupil,aes(x=Fatigue,y=hit
+                                        # group=sub,color=sub
+                                        ))+
+  # facet_wrap(. ~ Nback )+
+  geom_point()+
+  stat_smooth(method = "lm", se = FALSE, size = 1)
+
+p_all$hit_fatigue = setEmptyStyle(p_all$hit_fatigue,config)+
+  scale_x_continuous(breaks = config$xlim)+
+  theme(
+    legend.position="none"
+    # axis.text.x = element_text(angle = 30, hjust = 1)
+  )
+
+p_all$hit_fatigue$size=c(4,6) 
+
+p_all$hit_sleepiness = ggplot(df_pupil,aes(x=Sleepiness,
+                                           y=hit
+                                           # group=sub,color=sub
+                                           ))+
+  # facet_wrap(. ~ Nback )+
+  geom_point()+
+  stat_smooth(method = "lm", se = FALSE, size = 1)
+
+p_all$hit_sleepiness = setEmptyStyle(p_all$hit_sleepiness,config)+
+  scale_x_continuous(breaks = config$xlim)+
+  theme(
+    legend.position="none"
+    # axis.text.x = element_text(angle = 30, hjust = 1)
+  )
+
+p_all$hit_sleepiness$size=c(4,6) 
+
+
+config$ylim = round(seq(0,10,1),4)
+config$ylim_stride = 0.5
+
+p_all$sleepiness_fatigue = ggplot(df_pupil,aes(x=Sleepiness,y=Fatigue))+
+  # facet_wrap(. ~ Nback )+
+  geom_point()+
+  stat_smooth(method = "lm", se = FALSE, size = 1)
+
+p_all$sleepiness_fatigue = setEmptyStyle(p_all$sleepiness_fatigue,config)+
+  scale_x_continuous(breaks = config$xlim)+
+  theme(
+    legend.position="none"
+    # axis.text.x = element_text(angle = 30, hjust = 1)
+  )
+
+p_all$combinedFigs3 = combineGraphs2(c("hit_fatigue","hit_sleepiness","sleepiness_fatigue"),
+                                     p_all,c(1,3))
+p_all$combinedFigs3$size=c(12,4)
+
+
+
+p_all$run_fatigue = ggplot(df_pupil,aes(x=Run,y=Fatigue,group=sub,color=sub))+
+  geom_point()+
+  stat_smooth(method = "lm", se = FALSE, size = 1)
+
+p_all$run_sleepiness = ggplot(df_pupil,aes(x=Run,y=Sleepiness,group=sub,color=sub))+
+  geom_point()+
+  stat_smooth(method = "lm", se = FALSE, size = 1)
+
+p = combineGraphs2(c("run_fatigue","run_sleepiness"),
+                                     p_all,c(1,2))
+
+
+```
+
+# regress out the effect of time-on-task
+```{r, message=FALSE, warning=FALSE, echo=FALSE, include=FALSE}
+
+f = list.files(folderName, pattern = "data_timeCourse_RunAve.json", full.names=T)
+df2 = fromJSON(file=f[1])
+
+for(iName in 1:length(df2)){
+  df2[[iName]] = unlist(df2[[iName]])
+}
+df2 = as.data.frame(df2)
+
+f = list.files(folderName, pattern = "df_targetAll", full.names=T)
+df_pupil = fromJSON(file=f[1])
+
+for(iName in 1:length(df_pupil)){
+  df_pupil[[iName]] = unlist(df_pupil[[iName]])
+}
+df_pupil = as.data.frame(df_pupil)
+
+df_pupil = aggregate( . ~ sub*Run*light*Nback, data = df_pupil, FUN = 'mean')
+
+df_pupil = df_pupil[order(df_pupil$sub,df_pupil$Run,df_pupil$Nback),]
+df2 = df2[order(df2$sub,df2$Run,df2$Nback),]
+
+df_pupil$Sleepiness = df2$Sleepiness
+df_pupil$Fatigue  = df2$Fatigue
+
+df_pupil$lightNum = 0
+df_pupil[df_pupil$light=="high ipRGC",]$lightNum = 1
+
+inback = "2-back"
+
+# for(mmName in c("Sleepiness","Fatigue","lightNum")){
+for(mmName in c("Sleepiness","Fatigue")){
+  
+  eval(parse(text=paste0("df_pupil$model_",mmName,"=0")))
+  
+  for(inback in unique(df_pupil$Nback)){
+    
+    tmp_df = df_pupil[(df_pupil$Nback==inback),]
+    
+    eval(parse(text=paste0("modelList = '",mmName," ~ Run + (1+Run| sub)'")))
+    # eval(parse(text=paste0("modelList = '",mmName," ~ lightNum + Run + (1| sub)'")))
+    # eval(parse(text=paste0("modelList = '",mmName," ~ lightNum + (1+Run| sub)'")))
+    # eval(parse(text=paste0("modelList = ' hit ~ ",mmName," + (1+Run| sub)'")))
+    
+    eval(parse(text=paste0(" m <- lmer(", modelList, ", data = tmp_df)")))
+    # sm = summary(m)
+    
+    tmp_df$model = 0
+    tmp_df$model = tmp_df$model + fixef(m)["(Intercept)"]
+    tmp_df$model = tmp_df$model + tmp_df$Run * fixef(m)["Run"]
+    # tmp_df$model = tmp_df$model + tmp_df$lightNum * fixef(m)["lightNum"]
+    
+    c = 1
+    for(iSub in unique(tmp_df$sub)){
+      
+      tmp_df[(tmp_df$sub == iSub),]$model = tmp_df[(tmp_df$sub == iSub),]$model + ranef(m)[["sub"]][["(Intercept)"]][c]
+      tmp_df[(tmp_df$sub == iSub),]$model = tmp_df[(tmp_df$sub == iSub),]$model + ranef(m)[["sub"]][["Run"]][c]*tmp_df[(tmp_df$sub == iSub),]$Run
+      
+      # eval(parse(text=paste0("tmp_df[(tmp_df$sub == iSub),]$model = tmp_df[(tmp_df$sub == iSub),]$",mmName," - ranef(m)[['sub']][['Run']][c]*tmp_df[(tmp_df$sub == iSub),]$Run")))
+      
+      c = c + 1
+    }
+    
+    eval(parse(text=paste0(" df_pupil[(df_pupil$Nback==inback),]$model_",mmName," = tmp_df$model")))
+    
+  }
+}
+
+df_pupil$model_Sleepiness = df_pupil$Sleepiness - df_pupil$model_Sleepiness
+df_pupil$model_Fatigue = df_pupil$Fatigue - df_pupil$model_Fatigue
+
+# tmp_df2 = aggregate( . ~ sub*light*Nback, data = tmp_df, FUN = 'mean')
+# 
+# p = NULL
+# 
+# config$xlim = round(seq(1,2,1),4)
+# config$xlim_stride = 0.1
+# config$ylim = round(seq(3.8,5.6,0.1),4)
+# config$ylim_stride = 0.01
+# 
+# p$p1 = dispLineGraph(tmp_df2,config,"model_Sleepiness",c("light"))
+# p$p1 = setEmptyStyle(p$p1,config)
+# 
+# p$p2 = dispLineGraph(tmp_df2,config,"Sleepiness",c("light"))
+# p$p2 = setEmptyStyle(p$p2,config)
+# p$p3 = dispLineGraph(tmp_df2,config,"model_Fatigue",c("light"))
+# p$p3 = setEmptyStyle(p$p3,config)
+# 
+# 
+# p$p4 = dispLineGraph(tmp_df2,config,"Fatigue",c("light"))
+# p$p4 = setEmptyStyle(p$p4,config)
+# 
+# p = combineGraphs2(c("p1","p2","p3","p4"),p,c(1,4))
+
+tmp_df = aggregate( . ~ sub*Run*light*Nback, data = df_pupil, FUN = 'mean')
+
+p_all2 = NULL
+config$xlim = round(seq(1,6,1),4)
+config$xlim_stride = 0.1
+config$ylim = round(seq(-0.8,0.8,0.2),4)
+config$ylim_stride = 0.02
+
+config$label_y = "Sleepiness (Run effect was regress out)"
+config$label_x = "Run"
+
+p_all$model_Sleepiness = dispLineGraph(tmp_df,config,"model_Sleepiness",c("Run","light"))
+p_all$model_Sleepiness = setEmptyStyle(p_all$model_Sleepiness,config)+
+  scale_x_continuous(breaks = config$xlim)
+
+config$label_y = "Fatigue (Run effect was regress out)"
+p_all$model_Fatigue = dispLineGraph(tmp_df,config,"model_Fatigue",c("Run","light"))
+p_all$model_Fatigue = setEmptyStyle(p_all$model_Fatigue,config)+
+  scale_x_continuous(breaks = config$xlim)
+
+p_all$model_Sleepiness$size=c(8,6)
+p_all$model_Fatigue$size=c(8,6)
+
+# p_all2$run_fatigue = ggplot(tmp_df,aes(x=model_Fatigue,y=model_Sleepiness,
+#                                        group=interaction(light,sub),color=interaction(light,sub)))+
+#   geom_point()+
+#   facet_wrap(. ~ sub )+
+#   stat_smooth(method = "lm", se = FALSE, size = 1)
+
+
+# p = NULL
+# p$p3 = dispLineGraph(tmp_df,config,"Sleepiness",c("Run","light"))
+# p$p4 = dispLineGraph(tmp_df,config,"Fatigue",c("Run","light"))
+# p = combineGraphs2(c("p3","p4"),p,c(1,2))
+
+##########################################################################
+
+library(lavaan)
+library(semPlot)
+library(semptools)
+
+# df_pupil["Light"] = 1
+# df_pupil[df_pupil["light"]=="low ipRGC",]["Light"] = 0
+# tmp_data = df_pupil
+# [df_pupil["Nback"]=="2-back",]
+
+tmp_df2 = tmp_df
+# tmp_df2 = tmp_df[(tmp_df$Nback == "2-back"),]
+
+model <- '
+  hit ~ lightNum
+  hit ~ model_Sleepiness
+  hit ~ model_Fatigue
+  model_Sleepiness ~ lightNum
+  model_Fatigue ~ lightNum
+  model_Sleepiness ~~ model_Fatigue
+'
+
+fit <- sem(model, data = tmp_df2)
+
+# summary(fit)
+
+summary(fit, fit.measures = TRUE, standardized = TRUE)
+
+m <- matrix(NA, 3, 3)
+m[1, 2] <- "hit"
+m[2, 2] <- "lightNum"
+m[3, 1] <- "model_Sleepiness"
+m[3, 3] <- "model_Fatigue"
+
+p = semPaths(fit, 
+         # rotation = 2,
+         what = "Est",
+         # what = "Std",
+         # what = "paths",
+         edge.label.cex = 1.2,
+         # layout = "tree2",
+         edge.width = 0.3,
+         fade = FALSE,
+         style = "ram", 
+         residuals = F,
+         nCharNodes = 0,
+         curvePivot = TRUE,
+         optimizeLatRes = TRUE,
+         intercepts = FALSE,
+         layout = m
+)
+
+p_all$p_pa2 <- mark_sig(p, fit)
+
+plot(p_all$p_pa2)
+p_all$p_pa2$size = c(4,3)
+
+p_all$regressout_sleepiness_fatigue = combineGraphs2(c("model_Sleepiness","model_Fatigue"),p_all,c(1,2))
+p_all$regressout_sleepiness_fatigue$size=c(15,6)
+
+summary_fit <- parameterEstimates(fit, standardized = FALSE)
+
+equations <- list()
+
+regression_params <- subset(summary_fit, op == "~")
+  
+for (dep_var in unique(regression_params$lhs)) {
+  terms <- subset(regression_params, lhs == dep_var)
+  
+  equation <- paste(dep_var, "~",
+                    paste0(round(terms$est,4), " * ", terms$rhs, collapse = " + "))
+  
+  equations[[dep_var]] <- equation
+}
+
+# fit <- sem(model, data = tmp_df2, se = "bootstrap", bootstrap = 10000)
+# 
+# std_solution_boot <- standardizedSolution(fit)
+# print(std_solution_boot)
+
+##########################################################################
+
+# f = list.files(folderName, pattern = "data_timeCourse_ave.json", full.names=T)
+# df_pupil = fromJSON(file=f[1])
+# 
+# for(iName in 1:length(df_pupil)){
+#   df_pupil[[iName]] = unlist(df_pupil[[iName]])
+# }
+# df_pupil = as.data.frame(df_pupil)
+# 
+# df_pupil = aggregate( Pupil.mm. ~ sub*light, data = df_pupil, FUN = 'mean')
+# df_pupil$light = factor( df_pupil$light ,levels=c("low ipRGC","high ipRGC"))
+# 
+# df_pupil = df_pupil[order(df_pupil$sub,df_pupil$light),]
+# 
+# tmp_df$PD = df_pupil$Pupil.mm.
+# 
+# modelList = c(
+#   # "ans ~ light + Run + (1 | sub)",
+#   # "ans ~ light + group + Run + (1 | sub)",
+#   # "ans ~ light + Run + (1 + group| sub)",
+#   # "RT ~ light + group + Sleepiness + Fatigue + (1| sub)",
+#   # "hit ~ light + group + Sleepiness + Fatigue + (1| sub)",
+#   # "hit ~ PD + light + group + Sleepiness + Fatigue + (1| sub)",
+#   # "hit ~ PD + light  + Sleepiness + Fatigue + (1| sub)",
+#   # "hit ~ PD + (1| sub)",
+#   # "hit ~ PD + light + (1| sub)",
+#   "hit ~ Sleepiness + Fatigue + (1+group| sub)"
+#   # "hit ~ PD + light  + Sleepiness + Fatigue + (1| sub)"
+# )
+# 
+# aic_res = NULL
+# for( m in modelList){
+#   eval(parse(text=paste0(" model_cand <- lmer(",m,", data=tmp_df)")))
+#   print(summary(model_cand))
+#   print(AIC(model_cand))
+#   # fixef(model_cand)
+#   
+#   aic_res = c(aic_res,AIC(model_cand))
+#   # eval(parse(text=paste0(" m <- lmer(",modelList[which.min(aic_res)],", data=tmp_df)")))
+#   # print(eval(parse(text=paste0("summary(mmodel_cand)"))))
+# }
+
+# ggplot(tmp_df,aes(x=Fatigue,y=hit,color=sub,shape=group,group=sub))+
+#   geom_point()+
+#   geom_
+
+############
+
+
+
+#### average ####################################################################
+
+# f = list.files(folderName, pattern = "df_target_mean.json", full.names=T)
+# df_hit = fromJSON(file=f[1])
+# 
+# for(iName in 1:length(df_hit)){
+#   df_hit[[iName]] = unlist(df_hit[[iName]])
+# }
+# df_hit = as.data.frame(df_hit)
+# 
+# tmp_df_hit = df_hit[df_hit$Nback=="2-back",]
+# tmp_df_hit$light = factor( tmp_df_hit$light ,levels=c("low ipRGC","high ipRGC"))
+# 
+# tmp_df_hit <- tmp_df_hit[order(tmp_df_hit$sub,tmp_df_hit$light),]
+# 
+# tmp_df = aggregate( ans ~ sub*light*group, data = df[df$Task=="Sleepiness",], FUN = 'mean')
+# tmp_df_Fatigue = aggregate( ans ~ sub*light*group, data = df[df$Task=="Fatigue",], FUN = 'mean')
+# 
+# tmp_df$Sleepiness = tmp_df$ans
+# tmp_df$Fatigue = tmp_df_Fatigue$ans
+# 
+# tmp_df <- tmp_df[order(tmp_df$sub,tmp_df$light),]
+# 
+# tmp_df$hit = tmp_df_hit$hit
+# tmp_df$RT = tmp_df_hit$RT
+# tmp_df$pupil = tmp_df_hit$Pupil.a.u..
+
+```
+
+
+```{r, message=FALSE, warning=FALSE}
+
+# f = list.files(folderName, pattern = "questionaire.json", full.names=T)
+# df = fromJSON(file=f[1])
+# 
+# for(iName in 1:length(df)){
+#   df[[iName]] = unlist(df[[iName]])
+# }
+# df = as.data.frame(df)
+# 
+# f = list.files(folderName, pattern = "data_timeCourse_RunAve.json", full.names=T)
+# df2 = fromJSON(file=f[1])
+# 
+# for(iName in 1:length(df2)){
+#   df2[[iName]] = unlist(df2[[iName]])
+# }
+# 
+# df2 = as.data.frame(df2)
+# df2 = df2[order(df2$sub,df2$Run,df2$Nback),]
+# df = df[order(df$sub,df$Run),]
+# 
+# f = list.files(folderName, pattern = "df_targetAll", full.names=T)
+# df_pupil = fromJSON(file=f[1])
+# 
+# for(iName in 1:length(df_pupil)){
+#   df_pupil[[iName]] = unlist(df_pupil[[iName]])
+# }
+# df_pupil = as.data.frame(df_pupil)
+# 
+# df_RT = df_pupil[df_pupil$hit==1,]
+# df_RT = aggregate( . ~ sub*Run*light*Nback, data = df_RT, FUN = 'mean')
+# 
+# df_pupil$PD_phasic= df_pupil$Pupil.a.u..
+# 
+# df_pupil = aggregate( . ~ sub*Run*light*Nback, data = df_pupil, FUN = 'mean')
+# # df_pupil = aggregate( . ~ sub*Run*light*Nback, data = df_pupil, FUN = 'sd')
+# 
+# df_pupil = df_pupil[order(df_pupil$sub,df_pupil$Run,df_pupil$Nback),]
+# df_RT = df_RT[order(df_RT$sub,df_RT$Run,df_RT$Nback),]
+# 
+# df_pupil$RT = df_RT$RT
+# df_pupil$Sleepiness = df2$Sleepiness
+# df_pupil$Fatigue  = df2$Fatigue
+# 
+# df_pupil$lightNum = 0
+# df_pupil[df_pupil$light=="high ipRGC",]$lightNum = 1
+# 
+# 
+# df_pupil = aggregate( . ~ sub*light*Nback, data = df_pupil, FUN = 'mean')
+# 
+# modelList = c(
+#   # "hit ~ lightNum + Sleepiness + Fatigue + (1+Run| sub)",
+#   # "hit ~ Sleepiness + Fatigue + (1+Run| sub)",
+#   # "hit ~ lightNum + Sleepiness + (1+Run| sub)",
+#   # "hit ~ lightNum + Fatigue + (1+Run| sub)",
+#   # "hit ~ Sleepiness + (1+Run| sub)",
+#   # "hit ~ Fatigue + (1+Run| sub)",
+#   # "hit ~ lightNum * Sleepiness * Fatigue + (1+Run| sub)",
+#   # "hit ~ Sleepiness * Fatigue + (1+Run| sub)",
+#   "hit ~ lightNum * Sleepiness * Fatigue + (1| sub)"
+# )
+# 
+# df_pupil$hit <- scale(df_pupil$hit)[,1]
+# df_pupil$RT <- scale(df_pupil$RT)[,1]
+# df_pupil$lightNum <- scale(df_pupil$lightNum)[,1]
+# df_pupil$Sleepiness <- scale(df_pupil$Sleepiness)[,1]
+# df_pupil$Fatigue <- scale(df_pupil$Fatigue)[,1]
+# 
+# # estimateAll = NULL
+# # aic_res = NULL
+# # bic_res = NULL
+# for( m in modelList){
+#   inback= "2-back"
+#   # for(inback in unique(df_pupil$Nback)){
+#     
+#     tmp_df = df_pupil[(df_pupil$Nback==inback),]
+#     
+#     # tmp_df = aggregate( . ~ sub*light*Nback, data = tmp_df, FUN = 'mean')
+#     
+#     eval(parse(text=paste0(" model_cand <- lmer(",m,", data=tmp_df)")))
+#     # print(summary(model_cand))
+#     sm = summary(model_cand)
+#     # print(AIC(model_cand))
+#     # fixef(model_cand)
+#     # aic_res = c(aic_res,AIC(model_cand))
+#     # bic_res = c(bic_res,BIC(model_cand))
+#     
+#     sm = summary(model_cand)
+#     print(inback)
+#     print(m)
+#     print(sm$coefficients)
+# }
+  # }
+  
+  # eval(parse(text=paste0(" m <- lmer(",modelList[which.min(aic_res)],", data=tmp_df)")))
+  # eval(parse(text=paste0(" m <- lmer(",modelList[which.min(bic_res)],", data=tmp_df)")))
+  # 
+  # print(modelList[which.min(aic_res)])
+  # sm = summary(m)
+  # print(sm)
+
+
+  # tmp = data.frame(
+  #   Estimate = c(
+  #     # sm$coefficients["BP",]["Estimate"],
+  #     # sm$coefficients["PD_phasic",]["Estimate"],
+  #     sm$coefficients["Sleepiness",]["Estimate"],
+  #     sm$coefficients["Fatigue",]["Estimate"],
+  #     sm$coefficients["lightNum",]["Estimate"]),
+  #   factor = c(
+  #     # "Baseline",
+  #     # "Transient",
+  #     "Sleepiness",
+  #     "Fatigue",
+  #     "ipRGC"),
+  #   pVal = c(
+  #     # sm$coefficients["BP",]["Pr(>|t|)"],
+  #     # sm$coefficients["PD_phasic",]["Pr(>|t|)"],
+  #     sm$coefficients["Sleepiness",]["Pr(>|t|)"],
+  #     sm$coefficients["Fatigue",]["Pr(>|t|)"],
+  #     sm$coefficients["lightNum",]["Pr(>|t|)"]),
+  #   min = c(
+  #     # sm$coefficients["BP",]["Pr(>|t|)"],
+  #     # sm$coefficients["PD_phasic",]["Pr(>|t|)"],
+  #     sm$coefficients["Sleepiness",]["Estimate"]-sm$coefficients["Sleepiness",]["Std. Error"],
+  #     sm$coefficients["Fatigue",]["Estimate"]-sm$coefficients["Fatigue",]["Std. Error"],
+  #     sm$coefficients["lightNum",]["Estimate"]-sm$coefficients["lightNum",]["Std. Error"]),
+  #   max = c(
+  #     # sm$coefficients["BP",]["Pr(>|t|)"],
+  #     # sm$coefficients["PD_phasic",]["Pr(>|t|)"],
+  #     sm$coefficients["Sleepiness",]["Estimate"]+sm$coefficients["Sleepiness",]["Std. Error"],
+  #     sm$coefficients["Fatigue",]["Estimate"]+sm$coefficients["Fatigue",]["Std. Error"],
+  #     sm$coefficients["lightNum",]["Estimate"]+sm$coefficients["lightNum",]["Std. Error"]),
+  #   t = c(
+  #     # sm$coefficients["BP",]["Pr(>|t|)"],
+  #     # sm$coefficients["PD_phasic",]["Pr(>|t|)"],
+  #     sm$coefficients["Sleepiness",]["t value"],
+  #     sm$coefficients["Fatigue",]["t value"],
+  #     sm$coefficients["lightNum",]["t value"])
+  # )
+  # 
+  # tmp$formula = c(sm$call$formula)
+  # tmp$Nback = inback
+  # 
+  # estimateAll = rbind(estimateAll,tmp)
+
+```
+# Path analysis
+```{r, message=FALSE, warning=FALSE, echo=FALSE, include=FALSE}
+
+# f = list.files(folderName, pattern = "data_timeCourse_RunAve.json", full.names=T)
+# df_question = fromJSON(file=f[1])
+# 
+# for(iName in 1:length(df_question)){
+#   df_question[[iName]] = unlist(df_question[[iName]])
+# }
+# 
+# df_question = as.data.frame(df_question)
+# 
+# f = list.files(folderName, pattern = "df_targetAll", full.names=T)
+# df_pupil = fromJSON(file=f[1])
+# 
+# for(iName in 1:length(df_pupil)){
+#   df_pupil[[iName]] = unlist(df_pupil[[iName]])
+# }
+# 
+# df_pupil = as.data.frame(df_pupil)
+# df_pupil = aggregate( . ~ sub*Run*light*Nback, data = df_pupil, FUN = 'mean')
+# 
+# 
+# # p = dispLineGraph(df_pupil,config,"hit",c("Run","Nback"))+
+# #   facet_grid(. ~ Nback )
+# 
+# df_pupil = df_pupil[order(df_pupil$sub,df_pupil$Run,df_pupil$Nback),]
+# df_question = df_question[order(df_question$sub,df_question$Run,df_question$Nback),]
+# 
+# df_pupil$Sleepiness = df_question$Sleepiness
+# df_pupil$Fatigue  = df_question$Fatigue
+# 
+# df_pupil$lightNum = 0
+# df_pupil[df_pupil$light=="high ipRGC",]$lightNum = 1
+# 
+# ##############################################################################
+# # install.packages("semptools")
+# library(lavaan)
+# library(semPlot)
+# library(semptools)
+# 
+# df_pupil["Light"] = 1
+# df_pupil[df_pupil["light"]=="low ipRGC",]["Light"] = 0
+# tmp_data = df_pupil
+# # [df_pupil["Nback"]=="2-back",]
+# 
+# model <- '
+#   hit ~ Light
+#   hit ~ Sleepiness
+#   hit ~ Fatigue
+#   Sleepiness ~ Light
+#   Fatigue ~ Light
+#   Sleepiness ~~ Fatigue
+# '
+# 
+# fit <- sem(model, data = tmp_data)
+# 
+# summary(fit, fit.measures = TRUE, standardized = TRUE)
+# 
+# m <- matrix(NA, 3, 3)
+# m[1, 2] <- "hit"
+# m[2, 2] <- "Light"
+# m[3, 1] <- "Sleepiness"
+# m[3, 3] <- "Fatigue"
+# 
+# p = semPaths(fit, 
+#          # rotation = 2,
+#          what = "std",
+#          edge.label.cex = 1.2,
+#          # layout = "tree2",
+#          edge.width = 0.3,
+#          fade = FALSE,
+#          style = "ram", 
+#          residuals = F,
+#          nCharNodes = 0,
+#          curvePivot = TRUE,
+#          optimizeLatRes = TRUE,
+#          intercepts = FALSE,
+#          layout = m
+# )
+# 
+# p_all$p_pa2 <- mark_sig(p, fit)
+# p_all$p_pa2$size = c(4,3)
+# 
+# plot(p_all$p_pa2)
+
+```
+
+
+# Figure
+```{r, message=FALSE, echo=FALSE, warning=FALSE, fig.width = 10, fig.height = 5}
+if(saveFig){
+  mmName = names(p_all)
+  for(iFig in 1:length(mmName)){
+    if("size" %in% names(p_all[[iFig]])){
+      CairoPDF(file=paste0(saveFolder,iFig,"_",mmName[iFig]),
+               width=p_all[[iFig]]["size"][[1]][1],height=p_all[[iFig]]["size"][[1]][2],
+               bg = 'transparent')
+      # ggsave(file =paste0(saveFolder,iFig,"_",mmName[iFig],".pdf"),
+      #        plot = p_all[[iFig]],
+      #        width = p_all[[iFig]]["size"][[1]][1], height = p_all[[iFig]]["size"][[1]][2])
+      plot(p_all[[iFig]])
+      
+    }else{
+      # CairoPDF(file=paste0(saveFolder,iFig,"_",mmName[iFig]),
+      #          bg = 'transparent')
+      
+      # ggsave(file = paste0(saveFolder,iFig,"_",mmName[iFig],".pdf"),
+      #        plot = p_all[[iFig]], bg = 'transparent')
+      
+    }
+    
+    # eval(parse(text=paste0("print(p_all[[",iFig,"]])")))
+    # dev.off()
+  }
+}
+```
+
