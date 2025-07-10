@@ -119,6 +119,7 @@ df_timeCourse["Time[s]"] = np.tile(x, y1_targeted.shape[0])
 df_timeCourse["ipRGC"] = np.tile(np.array(datHash["light"]).reshape(np.array(datHash["Run"]).shape[0],1), y1_targeted.shape[1]).reshape(-1)
 df_timeCourse["sub"] = np.tile( np.array(datHash["sub"]).reshape(np.array(datHash["sub"]).shape[0],1), y1_targeted.shape[1]).reshape(-1)
 df_timeCourse["Run"] = np.tile( np.array(datHash["Run"]).reshape(np.array(datHash["Run"]).shape[0],1), y1_targeted.shape[1]).reshape(-1)
+df_timeCourse["hourCls"] = np.tile( np.array(datHash["hourCls"]).reshape(np.array(datHash["hourCls"]).shape[0],1), y1_targeted.shape[1]).reshape(-1)
 
 for c in cfg["conditionName"][1:]:
     df_timeCourse[c] = np.tile( np.array(datHash[c]).reshape(np.array(datHash[c]).shape[0],1), y1_targeted.shape[1]).reshape(-1)
@@ -186,14 +187,13 @@ for iSub in df["sub"].unique():
         df.loc[(df["sub"]==iSub)&(df["order"]==order[0]),"orderNum"]=1
   
     
-for mmName in ["hit","FA","CR","miss"]:
-    df[mmName] = 0
+
+df[["hit","FA","CR","miss"]] = 0
 
 df.loc[(df["target"]==1) & (df["response"]==1),"hit"]  = 1
 df.loc[(df["target"]==0) & (df["response"]==1),"FA"]   = 1
 df.loc[(df["target"]==0) & (df["response"]==0),"CR"]   = 1
 df.loc[(df["target"]==1) & (df["response"]==0),"miss"] = 1
-
 
 tmp = df.groupby(["sub",'light','Nback'],as_index=False,sort=False).agg('mean', numeric_only=True)
 
@@ -203,7 +203,7 @@ tmp = df_target.groupby(["sub",'light','Nback'],as_index=False,sort=False).agg('
 
 tmp = df_target[df_target["RT"] > 0]
 
-#########################################################
+########## exclude short/long RT trial ###############################################
 q75 = tmp.groupby(["sub"],as_index=False).quantile(.75, numeric_only=True)
 q25 = tmp.groupby(["sub"],as_index=False).quantile(.25, numeric_only=True)
 
@@ -250,7 +250,7 @@ df_sum = df.groupby(["sub","light","Nback"],as_index=False).agg(np.sum)
 
 sdt_data = pd.DataFrame()
 
-t = SDT(df_sum.at[0,"hit"], df_sum.at[0,"miss"], df_sum.at[0,"FA"], df_sum.at[0,"CR"])
+t = SDT(df_sum.at[0,"hit"], df_sum.at[0,"FA"])
 
 for iSTD in list(t.keys()):
     df_sum[iSTD] = 0
@@ -259,12 +259,7 @@ for i, item in df_sum.iterrows():
     n1 = item["hit"] + item["miss"]
     n2 = item["FA"] + item["CR"]
     
-    # for mmName in ["hit","miss"]:
-    #     df_sum.at[i,mmName] = df_sum.at[i,mmName] / n1
-        
-    # for mmName in ["CR","FA"]:
-    #     df_sum.at[i,mmName] = df_sum.at[i,mmName] / n2
-    t = SDT(df_sum.at[i,"hit"], df_sum.at[i,"miss"], df_sum.at[i,"FA"], df_sum.at[i,"CR"])
+    t = SDT(df_sum.at[i,"hit"]/n1, df_sum.at[i,"FA"]/n2)
     
     for mmName in list(t.keys()):
         df_sum.at[i,mmName] = t[mmName].values
@@ -272,28 +267,28 @@ for i, item in df_sum.iterrows():
 
 ############## STD each Run ##############
 
-df_sum_run = df.groupby(["sub","Run","light","Nback"],as_index=False).agg(np.sum)
-df_sum_run_target = df[df["target"]==1].groupby(["sub","Run","light","Nback"],as_index=False).agg(np.mean)
+# df_sum_run = df.groupby(["sub","Run","light","Nback"],as_index=False).agg(np.sum)
+# df_sum_run_target = df[df["target"]==1].groupby(["sub","Run","light","Nback"],as_index=False).agg(np.mean)
 
-sdt_data = pd.DataFrame()
+# sdt_data = pd.DataFrame()
 
-t = SDT(df_sum_run.at[0,"hit"], df_sum_run.at[0,"miss"], df_sum_run.at[0,"FA"], df_sum_run.at[0,"CR"])
+# t = SDT(df_sum_run.at[0,"hit"], df_sum_run.at[0,"FA"])
 
-for iSTD in list(t.keys()):
-    df_sum_run_target[iSTD] = 0
+# for iSTD in list(t.keys()):
+#     df_sum_run_target[iSTD] = 0
 
-for i, item in df_sum_run.iterrows():
-    n1 = item["hit"] + item["miss"]
-    n2 = item["FA"] + item["CR"]    
-    # for mmName in ["hit","miss"]:
-    #     df_sum.at[i,mmName] = df_sum.at[i,mmName] / n1
+# for i, item in df_sum_run.iterrows():
+#     n1 = item["hit"] + item["miss"]
+#     n2 = item["FA"] + item["CR"]    
+#     # for mmName in ["hit","miss"]:
+#     #     df_sum.at[i,mmName] = df_sum.at[i,mmName] / n1
         
-    # for mmName in ["CR","FA"]:
-    #     df_sum.at[i,mmName] = df_sum.at[i,mmName] / n2
-    t = SDT(df_sum_run.at[i,"hit"], df_sum_run.at[i,"miss"], df_sum_run.at[i,"FA"], df_sum_run.at[i,"CR"])
+#     # for mmName in ["CR","FA"]:
+#     #     df_sum.at[i,mmName] = df_sum.at[i,mmName] / n2
+#     t = SDT(df_sum_run.at[i,"hit"]/n1,df_sum_run.at[i,"FA"]/n2)
     
-    for mmName in list(t.keys()):
-        df_sum_run_target.at[i,mmName] = t[mmName].values
+#     for mmName in list(t.keys()):
+#         df_sum_run_target.at[i,mmName] = t[mmName].values
 
 #%% reject sub
 
@@ -311,8 +306,8 @@ rejectSub = tmp[(tmp["resRate"]<lower)|(tmp["resRate"]>upper)]["sub"]
 for iSub in rejectSub:    
     df_target = df_target[df_target["sub"]!=iSub]
     df_sum = df_sum[df_sum["sub"]!=iSub]
-    df_sum_run = df_sum_run[df_sum_run["sub"]!=iSub]
-    df_sum_run_target = df_sum_run_target[df_sum_run_target["sub"]!=iSub]
+    # df_sum_run = df_sum_run[df_sum_run["sub"]!=iSub]
+    # df_sum_run_target = df_sum_run_target[df_sum_run_target["sub"]!=iSub]
     df = df[df["sub"]!=iSub]
     
 
@@ -325,9 +320,9 @@ tmp = tmp[(tmp["Nback"]=="1-back")&(tmp["light"]=="high ipRGC")]
 
 print("Number of ipRGC+ first = " + str(len(tmp[tmp["orderNum"]==0])) + " out of " + str(len(tmp)))
 
-df_sum_run.to_json(folderName + "/df_run.json")
+# df_sum_run.to_json(folderName + "/df_run.json")
 df_target.to_json(folderName + "/df_targetAll.json")
-df_sum_run_target.to_json(folderName + "/df_SDT.json")
+# df_sum_run_target.to_json(folderName + "/df_SDT.json")
 
 
 
@@ -475,6 +470,7 @@ for iSTD in ["hit","miss"]:
     for iNback in ["1-back","2-back"]:
         d1 = df_target_mean[(df_target_mean["Nback"]==iNback)&
                             (df_target_mean["light"]=="low ipRGC")][iSTD].values
+        
         d2 = df_target_mean[(df_target_mean["Nback"]==iNback)&
                             (df_target_mean["light"]=="high ipRGC")][iSTD].values
         
@@ -613,14 +609,42 @@ print("###################")
 print("####### RT ########")
 print("###################")
 
-# print(AnovaRM(data=df_target_mean, depvar='RT',
-#               subject='sub', within=['light','Nback']).fit())
+# %% dprime
 
-# for mmName in ["1-back","2-back"]:
-#     d1 = df_target_mean[(df_target_mean["Nback"]==mmName)&
-#                         (df_target_mean["light"]=="low ipRGC")]["RT"].values
-#     d2 = df_target_mean[(df_target_mean["Nback"]==mmName)&
-#                         (df_target_mean["light"]=="high ipRGC")]["RT"].values
+plt.figure()
+g = sns.FacetGrid(df_sum, 
+                 col="Nback",
+                 )
+g.map(sns.pointplot,
+         "light",
+         "dprime",
+         # "c",
+         # "beta",
+         errorbar="se").add_legend()
+
+sns.move_legend(g,'upper right',title = '',
+            bbox_to_anchor=(0.6, 0.9),borderaxespad=0,frameon=False)
+
+g.fig.set_figheight(7)
+g.fig.set_figwidth(7)
+# g.set(xlabel="",ylabel="d-prime")
+g.set_titles("{col_name}")
+
+for iNback in ["1-back","2-back"]:
+    d1 = df_sum[(df_sum["Nback"]==iNback)&
+                (df_sum["light"]=="low ipRGC")]["dprime"].values
+    d2 = df_sum[(df_sum["Nback"]==iNback)&
+                (df_sum["light"]=="high ipRGC")]["dprime"].values
+
+    # d1 = df_sum[(df_sum["Nback"]==iNback)&
+    #             (df_sum["light"]=="low ipRGC")]["hit"].values
+    # d2 = df_sum[(df_sum["Nback"]==iNback)&
+    #             (df_sum["light"]=="high ipRGC")]["hit"].values
+
+     
+    print(scipy.stats.ttest_rel(d1, d2).pvalue)
     
-#     print(scipy.stats.ttest_rel(d1, d2).pvalue)
+
+print(AnovaRM(data=df_sum, depvar='dprime',
+              subject='sub', within=['light','Nback']).fit())
 

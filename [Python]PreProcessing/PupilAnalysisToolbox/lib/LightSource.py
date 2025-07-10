@@ -169,7 +169,7 @@ class LightSource:
         self.XYZ_d65['Y'] = Y
         self.XYZ_d65['Z'] = Z
           
-        self.filePath = glob.glob(os.path.dirname(os.path.realpath(__file__)) + "/LEDdata/")[0]
+        self.filePath = glob.glob("PupilAnalysisToolbox/lib/LEDdata/")[0]
         
         self.peakLength = [420,450,475,505,525,540,555,595,610,635,660,705] # LED Cube
  

@@ -138,6 +138,7 @@ df_timeCourse["Time[s]"] = np.tile(x, y1_targeted.shape[0])
 df_timeCourse["vel"] = np.c_[np.zeros((y1_targeted.shape[0],1)),np.diff(y1_targeted)].reshape(-1)
 df_timeCourse["ipRGC"] = np.tile(np.array(datHashRun["light"]).reshape(np.array(datHashRun["Run"]).shape[0],1), y1_targeted.shape[1]).reshape(-1)
 df_timeCourse["sub"] = np.tile( np.array(datHashRun["sub"]).reshape(np.array(datHashRun["sub"]).shape[0],1), y1_targeted.shape[1]).reshape(-1)
+df_timeCourse["hourCls"] = np.tile( np.array(datHashRun["hourCls"]).reshape(np.array(datHashRun["hourCls"]).shape[0],1), y1_targeted.shape[1]).reshape(-1)
 df_timeCourse["Run"] = np.tile( np.array(datHashRun["Run"]).reshape(np.array(datHashRun["Run"]).shape[0],1), y1_targeted.shape[1]).reshape(-1)
 df_timeCourse["Fatigue"] = np.tile( np.array(datHashRun["Fatigue"]).reshape(np.array(datHashRun["Fatigue"]).shape[0],1), y1_targeted.shape[1]).reshape(-1)
 df_timeCourse["Fatigue"]  = df_timeCourse["Fatigue"] - 1
@@ -207,12 +208,13 @@ plt.savefig("./figure/"+date+"/pupil_timecourse_run"+ext, bbox_inches="tight",pa
 #%% Sleepiness
 
 df = pd.DataFrame()
-for mmName in ["light","Nback","order","Run","sub","Sleepiness","Fatigue"]:
+for mmName in ["light","Nback","order","Run","sub","Sleepiness","Fatigue","hourCls"]:
     df[mmName] = datHashRun[mmName]
+
+df["PDR"] = [np.mean(p) for p in datHashRun["PDR"]]
 
 df["Sleepiness"]  = df["Sleepiness"] - 1
 df["Fatigue"]  = df["Fatigue"] - 1
-
 
 df["light"] = [mmName1[int(i-1)] for i in df["light"].values]
 df["Nback"] = [mmName2[int(i-1)] for i in df["Nback"].values]
@@ -229,6 +231,28 @@ for iSub in df["sub"].unique():
         df.loc[(df["sub"]==iSub)&(df["order"]==order[0]),"orderNum"]=1
         
 df = df.sort_values(["sub","Nback","light","order","Run"])
+
+# %%
+
+# plt.figure()
+# sns.lmplot(data=df,
+#             x="PDR",
+#             y="Sleepiness",
+#             y="Fatigue",
+#             col="sub",
+#             hue="light",
+#             col_wrap=6).add_legend()
+
+# plt.figure()
+# sns.lmplot(data=df,
+#             x="PDR",
+#             # y="Sleepiness",
+#             y="Fatigue",
+#             # col="sub",
+#             hue="sub",
+#             # hue="light"
+#             ).add_legend()
+
 
 #%% save questionaire data
 
@@ -264,3 +288,9 @@ df_eval_all = pd.concat([tmp_Sleepiness,tmp_tired])
 tmp_plot = df_eval_all.groupby(["sub","Run","light","Task"],as_index=False).agg('mean', numeric_only=True)
 
 tmp_plot.to_json(folderName+"/questionaire.json")
+
+# %%
+
+tmp_plot = df.groupby(["sub","hourCls","orderNum","light"],as_index=False).agg('mean', numeric_only=True)
+
+

@@ -752,46 +752,42 @@ def rejectedSubByOutlier(dat, y_bp, factorName = "BaselinePD"):
     return reject
 
 #%% SDT
-def SDT(hits, misses, fas, crs):
+def SDT(hit_rate, fa_rate):
    
     """ 
     returns a dict with d-prime measures given hits, misses, false alarms, and correct rejections
     
     """
     
-    Z = norm.ppf
+    hit_rate = np.clip(hit_rate, 1e-5, 1 - 1e-5)
+    fa_rate = np.clip(fa_rate, 1e-5, 1 - 1e-5)
 
-    if fas == 0:
-       hit_rate = 1 - (1/(2*hits + misses))
-       fa_rate = 1/(2*hits + misses)
-       # print("replaced!")
+    # z score
+    zH = norm.ppf(hit_rate)
+    zFA = norm.ppf(fa_rate)
 
+    # d'
+    d_prime = zH - zFA
+
+    # beta
+    beta = np.exp((zFA**2 - zH**2) / 2)
+
+    # c（criterion）
+    c = -(zH + zFA) / 2
+
+    # A-prime
+    if hit_rate >= fa_rate:
+        A_prime = 0.5 + ((hit_rate - fa_rate) * (1 + hit_rate - fa_rate)) / (4 * hit_rate * (1 - fa_rate))
     else:
-        # Floors an ceilings are replaced by half hits and half FA's
-        half_hit = 0.5 / (hits + misses)
-        half_fa  = 0.5 / (fas + crs)
-     
-        # Calculate hit_rate and avoid d' infinity
-        hit_rate = hits / (hits + misses)
-        if hit_rate == 1: 
-            hit_rate = 1 - half_hit
-        if hit_rate == 0: 
-            hit_rate = half_hit
-        
-        # Calculate false alarm rate and avoid d' infinity
-        fa_rate = fas / (fas + crs)
-    
-    # Return d', beta, c and Ad'
-    dprime = Z(hit_rate) - Z(fa_rate)
-    out = pd.DataFrame(
-        np.array([dprime, 
-                  math.exp((Z(fa_rate)**2 - Z(hit_rate)**2) / 2),
-                  -(Z(hit_rate) + Z(fa_rate)) / 2,
-                  norm.cdf(dprime / math.sqrt(2))]).reshape(1, 4),
-        columns=["dprime","beta","c","Ad"])
-        
-    return out
+        A_prime = 0.5 - ((fa_rate - hit_rate) * (1 + fa_rate - hit_rate)) / (4 * fa_rate * (1 - hit_rate))
 
+    return pd.DataFrame({
+        'dprime': d_prime,
+        'beta': beta,
+        'c': c,
+        'Aprime': A_prime
+        },index=[0])
+    
 #%%
 def MPCL(sub, data_y, cfg, pcpd="PD", time_min = 0, time_max = 3,pltFlg=False):
     

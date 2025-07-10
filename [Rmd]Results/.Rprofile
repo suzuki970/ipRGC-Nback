@@ -4,14 +4,22 @@ library(easypackages)
 liblist <- c("rjson","ggplot2","ggpubr","Cairo","gridExtra","effsize",
              "BayesFactor","reshape",
              # "lme4",
-             "RColorBrewer",
+             "lavaan","semPlot","semptools",
+             "RColorBrewer","ggbeeswarm",
              "permutes","quickpsy",
              "psycho","colorspace","knitr","kableExtra","openxlsx",
              "cowplot","fitdistrplus","reshape2","tidyr","tidyverse","ggsignif","ggnewscale",
-             "lmerTest","modelsummary")
+             "lmerTest","modelsummary","effectsize","purrr")
+
+
+# install_if_missing <- liblist[!(liblist %in% installed.packages()[,"Package"])]
+# 
+# # install packages
+# if(length(install_if_missing)) {
+#   install.packages(install_if_missing)
+# }
 
 libraries(liblist)
-
 
 if(exists(".anovakun.env")){
   # sys.source("./data/anovakun_485.R", envir = .anovakun.env)
@@ -60,6 +68,13 @@ pairedttest <- function(x,y=NULL){
   return(bf)
 }
 
+
+load_json_dataframe <- function(folder, pattern) {
+  file_path <- list.files(folder, pattern = pattern, full.names = TRUE)[1]
+  json_data <- fromJSON(file = file_path)
+  json_data <- lapply(json_data, unlist)
+  as.data.frame(json_data)
+}
 
 makePupilDataset <- function(dat,nameOfVar,nameOfAtl, timeLen, fNum, orderName){
   
@@ -782,7 +797,7 @@ showTtestSummary <- function(ttest){
   
   paste0("$t$(",ttest$ttest$parameter,") = ", round(ttest$ttest$statistic,3), 
          ", ", pLines,
-         ", Cohen’s $d_z$ = ", round(ttest$cohend$estimate,3),
+         ", $d_z$ = ", round(ttest$cohend$estimate,3),
          ", ", bfLines)
 }
 
@@ -795,9 +810,35 @@ showLMESummary <- function(model,mmName){
     pLines = paste0("$p$=",round(model_summary$coefficients[mmName,"Pr(>|t|)"],3))
   }
   
-  paste0("$t$(",length(unique(model@frame[["sub"]])),") = ", 
+  paste0("$t$(",length(unique(model@frame[["sub"]]))-1,") = ", 
          round(model_summary$coefficients[mmName,"t value"],3),
-         ", ", pLines
+         ", ", pLines,
+         ", $d_z$ = ", abs(round(t_to_d(t = model_summary$coefficients[mmName,"t value"], df_error = model_summary$coefficients[mmName,"df"])$d,3))
          )
 }
 
+
+get_cohend <- function(tval, df) {
+  abs(round(t_to_d(t = tval, df_error = df)$d, 3))
+}
+
+extract_coef_info <- function(sm, terms) {
+  map_dfr(terms, function(term) {
+    est <- sm$coefficients[term, "Estimate"]
+    se <- sm$coefficients[term, "Std. Error"]
+    p <- sm$coefficients[term, "Pr(>|t|)"]
+    tval <- sm$coefficients[term, "t value"]
+    df <- sm$coefficients[term, "df"]
+    
+    data.frame(
+      Estimate = est,
+      factor = term,
+      pVal = p,
+      min = est - se,
+      max = est + se,
+      t = tval,
+      cohend = get_cohend(tval, df),
+      stringsAsFactors = FALSE
+    )
+  })
+}

@@ -92,6 +92,7 @@ def run(iSub):
              "order":[],
              "response":[],
              "target":[],
+             "hourCls":[],
              "RT":[],
              "sub":[]
               }
@@ -100,6 +101,7 @@ def run(iSub):
                  "Run":[],
                  "sub":[],
                  "order":[],
+                 "hourCls":[],
                  "light2":[],
                  "Sleepiness":[],
                  "Fatigue":[],
@@ -124,6 +126,14 @@ def run(iSub):
         # print(1)
         # fDate = matFileName[iRun].split('_')[-2][:8]
         fTime = ascFileName[iRun].split('_')[-2][-6:]
+        hour = int(fTime[:2])
+        if 10 <= hour < 13:
+            hourCls = 0
+        elif 13 <= hour < 16:
+            hourCls = 1
+        elif 16 <= hour < 19:
+            hourCls = 2
+       
         matFileName = glob.glob(rootFolder + "/" + iSub + "/*"+fTime+"*.mat")
         matFileName.sort()
         f = matFileName[0]
@@ -230,6 +240,7 @@ def run(iSub):
                                           scipy.io.loadmat(f)["cfg"][0,0]["res_summary"][0,0]["Run"+str(tmp_runCount)][0,0]["N1back"][0,0]["Light"][0,0]]
             datHash_run["sub"].append(int(iSub[1:3]))     
             datHash_run["order"].append(fTime)
+            datHash_run["hourCls"].append(int(hourCls))
             
             datHash_run["Fatigue"].append(int(scipy.io.loadmat(f)["cfg"][0,0]["res_summary"][0,0]["Run"+str(tmp_runCount)][0,0]["tiredness"][0,0]))
             datHash_run["Sleepiness"].append(int(scipy.io.loadmat(f)["cfg"][0,0]["res_summary"][0,0]["Run"+str(tmp_runCount)][0,0]["drowsiness"][0,0]))
@@ -282,7 +293,8 @@ def run(iSub):
                 datHash["PDR"].append(pupilData[tmp].tolist())
 
             datHash["order"].append(int(fTime))
-            
+            datHash["hourCls"].append(int(hourCls))
+
             # datHash["Run"] = np.r_[datHash["Run"],np.ones(len(seq_onset))*(iRun+1)]
         
         #% ------------------ sub & condition ----------------------- 

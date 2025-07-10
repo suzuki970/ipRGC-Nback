@@ -46,7 +46,7 @@ from zeroInterp import zeroInterp,zeroInterp_oneshot
 from pre_processing import re_sampling
 from au2mm import au2mm,getmm
 from band_pass_filter import butter_bandpass_filter,lowpass_filter
-from pre_processing_cls import getNearestValue
+from PupilAnalysisToolbox.lib.pre_processing_cls import getNearestValue
 
 # import zmq, msgpack
  

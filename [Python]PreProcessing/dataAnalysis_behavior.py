@@ -451,7 +451,6 @@ df_spectra = df_spectra.groupby(["Light"],as_index=False).agg('mean', numeric_on
 
 #%%
 
-
 ipRGC = LEDCube.getipRGCfunc()
 
 fileName = glob.glob(rootFolder+"lightFlux.csv")
@@ -495,7 +494,7 @@ for iLight in np.arange(csv_input.shape[0]):
 df = pd.concat(df)
 
 df = df.reset_index(drop=True)
-
+df = df[df["sub"]!=24]
 df.to_json(folderName+"/spectra_flux.json")
 
 df_ave = df.groupby(["sub"],as_index=False).agg('mean', numeric_only=True)
