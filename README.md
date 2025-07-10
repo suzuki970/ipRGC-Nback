@@ -2,7 +2,7 @@
 Copyright 2025 Yuta Suzuki
 
 
-### Article information
+## Article information
 Suzuki, Y., Nakauchi, S., Liao, H. Selective Activation of ipRGC Modulates Working Memory Performance
 
 
@@ -15,6 +15,7 @@ Python
 - json
 
 R
+
 Run the following code first to install the required packages.
 ```
 pkg_list <- read.csv("loaded_packages_versions.csv", stringsAsFactors = FALSE)
