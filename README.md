@@ -15,20 +15,18 @@ Python
 - json
 
 R
-- library(rjson)
-- library(ggplot2)
-- library(ggpubr)
-- library(Cairo)
-- library(gridExtra)
-- library(effsize)
-- library(BayesFactor)
-- library(rjson)
-- library(reshape)
-- library(lme4)
-- library(permutes)
+Run the following code first to install the required packages.
+```
+pkg_list <- read.csv("loaded_packages_versions.csv", stringsAsFactors = FALSE)
 
+for (i in 1:nrow(pkg_list)) {
+  if (!pkg_list[i,"Package"] %in% installed.packages()[,"Package"]){
+    install.packages(pkg_list[i,"Package"])
+  }
+}
+```
 ## Raw data
-raw data can be found at **'[Python]PreProcessing/results'**
+Raw data can be found at **'[Python]PreProcessing/results'**
 
 ## Pre-processing
 - Raw data (.asc) are pre-processed by **'[Python]PreProcessing/parseData.py'**
@@ -42,4 +40,5 @@ raw data can be found at **'[Python]PreProcessing/results'**
 
 
 ### Article information
-
+Suzuki, Y., Nakauchi, S. & Liao, H.-I. Selective activation of ipRGC modulates working memory performance. PLOS One 20, e0327349 (2025).
+  
